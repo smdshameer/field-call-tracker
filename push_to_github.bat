@@ -1,70 +1,74 @@
 @echo off
-title Push Field Call Tracker to GitHub
-color 0A
-echo ============================================================
-echo      KS SMART SOLUTIONS - PUSH TO GITHUB AUTOMATION
-echo ============================================================
+setlocal enabledelayedexpansion
+title KS Smart Solutions - Push to GitHub & Deploy Cloudflare
+
+echo ==============================================================================
+echo   KS SMART SOLUTIONS & TAMIL NADU SCHOOL EDUCATION PROJECT
+echo   Auto GitHub Push & Cloudflare Worker Live Deployment Tool
+echo ==============================================================================
 echo.
 
+:: Detect Git Executable
 set "GIT_CMD=git"
-where git >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    if exist "C:\Users\acer\AppData\Local\MinGit\cmd\git.exe" (
-        set "GIT_CMD=C:\Users\acer\AppData\Local\MinGit\cmd\git.exe"
+if exist "C:\Program Files\Git\cmd\git.exe" (
+    set "GIT_CMD=C:\Program Files\Git\cmd\git.exe"
+) else if exist "C:\Users\acer\AppData\Local\Programs\Git\cmd\git.exe" (
+    set "GIT_CMD=C:\Users\acer\AppData\Local\Programs\Git\cmd\git.exe"
+) else if exist "C:\Users\acer\AppData\Local\MinGit\cmd\git.exe" (
+    set "GIT_CMD=C:\Users\acer\AppData\Local\MinGit\cmd\git.exe"
+)
+
+echo [*] Using Git at: "!GIT_CMD!"
+"!GIT_CMD!" --version
+echo.
+
+:: Change directory to project root
+cd /d "%~dp0"
+
+:: Step 1: Re-bundle standalone worker.js
+echo [*] Bundling standalone Cloudflare Worker package...
+if exist "scratch\bundle_worker.ps1" (
+    powershell -ExecutionPolicy Bypass -File "scratch\bundle_worker.ps1"
+)
+echo.
+
+:: Step 2: Stage all changes
+echo [*] Staging files for Git commit...
+"!GIT_CMD!" add .
+
+:: Step 3: Get Commit Message or Default
+set "COMMIT_MSG=%~1"
+if "%COMMIT_MSG%"=="" (
+    set "COMMIT_MSG=Update Field Call Tracker - %DATE% %TIME%"
+)
+
+echo [*] Committing with message: "%COMMIT_MSG%"
+"!GIT_CMD!" commit -m "%COMMIT_MSG%"
+
+:: Step 4: Push to GitHub
+echo.
+echo [*] Pushing latest changes to GitHub (smdshameer/field-call-tracker)...
+"!GIT_CMD!" push origin main
+
+if %ERRORLEVEL% EQU 0 (
+    echo.
+    echo ==============================================================================
+    echo   [SUCCESS] Code successfully pushed to GitHub!
+    echo   Cloudflare Worker will automatically redeploy live within 10-15 seconds.
+    echo   Live URL: https://field-call-tracker.smssiddiq2011.workers.dev
+    echo ==============================================================================
+) else (
+    echo.
+    echo [!] Standard push failed. Attempting force push...
+    "!GIT_CMD!" push --force origin main
+    if %ERRORLEVEL% EQU 0 (
+        echo.
+        echo [SUCCESS] Force push completed successfully!
     ) else (
-        color 0C
-        echo [ERROR] Git is not found.
-        pause
-        exit /b 1
+        echo.
+        echo [ERROR] Push failed. Please check your internet connection or git credentials.
     )
 )
 
-echo [1/4] Initializing Git repository...
-if not exist ".git" (
-    "%GIT_CMD%" init
-    "%GIT_CMD%" branch -M main
-)
-
 echo.
-echo [2/4] Staging and committing all project files...
-"%GIT_CMD%" config user.name "smdshameer"
-"%GIT_CMD%" config user.email "smssiddiq2011@gmail.com"
-"%GIT_CMD%" add .
-"%GIT_CMD%" commit -m "Update password reset and standalone worker"
-
-echo.
-echo [3/4] Linking GitHub Remote (smdshameer/field-call-tracker)...
-"%GIT_CMD%" remote remove origin >nul 2>nul
-"%GIT_CMD%" remote add origin https://github.com/smdshameer/field-call-tracker.git
-"%GIT_CMD%" branch -M main
-
-echo.
-echo [4/4] Pushing to GitHub (main branch)...
-"%GIT_CMD%" push -u origin main
-
-if %ERRORLEVEL% equ 0 (
-    color 0A
-    echo.
-    echo ============================================================
-    echo   SUCCESS! Your software is pushed to GitHub!
-    echo ============================================================
-    echo.
-    echo Next Steps to deploy on Cloudflare Pages or Vercel:
-    echo 1. Cloudflare Pages (UNLIMITED Bandwidth & 100%% Uptime):
-    echo    - Go to https://dash.cloudflare.com
-    echo    - Click Workers & Pages -> Create -> Pages -> Connect to Git
-    echo    - Select your repository and click Deploy!
-    echo.
-    echo 2. Vercel:
-    echo    - Go to https://vercel.com
-    echo    - Click Add New -> Project -> Import your repo -> Deploy!
-    echo.
-) else (
-    color 0C
-    echo.
-    echo [NOTE] If push failed due to authentication, please ensure you are
-    echo logged into your GitHub account or have created the repo on GitHub first.
-    echo.
-)
-
 pause

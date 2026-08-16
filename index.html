@@ -2274,6 +2274,12 @@
   <script>
     // Global standalone drawer opener helper with guaranteed fallback
     window.openLogCallDrawer = function(id) {
+      window.activeEditId = id;
+      window.currentEditCallId = id;
+      var form = document.getElementById('editCallForm');
+      if (form) form.setAttribute('data-active-id', String(id));
+      if (window.tracker) window.tracker.activeEditId = id;
+
       if (window.tracker && typeof window.tracker.openEditDrawer === 'function') {
         window.tracker.openEditDrawer(id);
         return;
@@ -4498,6 +4504,82 @@
       ['input', 'change', 'keyup', 'paste'].forEach(function(evt) {
         document.addEventListener(evt, _handleLiveConveyanceCalc, true);
       });
+
+      // Global document-level fallback submit handler for editCallForm to guarantee saving on all mobile devices
+      document.addEventListener('submit', function(e) {
+        if (e.target && e.target.id === 'editCallForm') {
+          e.preventDefault();
+          var form = e.target;
+          var activeId = (window.tracker && window.tracker.activeEditId) || form.getAttribute('data-active-id') || window.activeEditId || window.currentEditCallId;
+          if (!activeId) {
+            var titleEl = document.getElementById('editDrawerTitle');
+            if (titleEl && titleEl.textContent) {
+              var m = titleEl.textContent.match(/Call\s*#(\d+)/i);
+              if (m) activeId = m[1];
+            }
+          }
+          if (!activeId) return;
+
+          var distInput = document.getElementById('editDistanceKm');
+          var distVal = (distInput && distInput.value !== '' && !isNaN(parseFloat(distInput.value))) ? parseFloat(distInput.value) : null;
+          var statusInput = document.getElementById('editStatus');
+          var statusVal = statusInput ? statusInput.value : 'Not Started';
+          var dateInput = document.getElementById('editDateClosed');
+          var dateVal = dateInput ? dateInput.value : '';
+          var engInput = document.getElementById('editVisitedBy');
+          var engVal = engInput ? engInput.value : '';
+          var actInput = document.getElementById('editActionTaken');
+          var actVal = actInput ? actInput.value : '';
+          var matInput = document.getElementById('editMaterialsUsed');
+          var matVal = matInput ? matInput.value : '';
+          var remInput = document.getElementById('editRemark');
+          var remVal = remInput ? remInput.value : '';
+          var cashInput = document.getElementById('editOwnCashSpent');
+          var cashVal = cashInput ? (parseFloat(cashInput.value) || 0) : 0;
+          var cashReasonInput = document.getElementById('editOwnCashReason');
+          var cashReasonVal = cashReasonInput ? cashReasonInput.value : '';
+          var hmInput = document.getElementById('editHmName');
+          var hmVal = hmInput ? hmInput.value : '';
+
+          var userRate = (window.authStore && window.authStore.currentUser && window.authStore.currentUser.conveyanceRate) ? parseFloat(window.authStore.currentUser.conveyanceRate) : null;
+          var rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((window.appStore && window.appStore.settings && window.appStore.settings.ratePerKm) ? parseFloat(window.appStore.settings.ratePerKm) : 5);
+
+          var updatePayload = {
+            status: statusVal,
+            distanceKm: distVal,
+            conveyanceCost: distVal !== null ? Math.round(distVal * rate) : null,
+            isManualInput: distVal !== null,
+            dateClosed: dateVal,
+            visitedBy: engVal,
+            actionTaken: actVal,
+            materialsUsed: matVal,
+            remark: remVal,
+            ownCashSpent: cashVal,
+            ownCashReason: cashReasonVal,
+            hmName: hmVal
+          };
+
+          if (window.appStore && typeof window.appStore.updateCall === 'function') {
+            window.appStore.updateCall(activeId, updatePayload);
+          }
+
+          var overlay = document.getElementById('editDrawerOverlay');
+          if (overlay) overlay.classList.remove('active');
+
+          if (window.tracker && typeof window.tracker.render === 'function') {
+            try { window.tracker.render(); } catch(err) {}
+          }
+          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function' && window.appStore) {
+            try { window.dashboard.updateDashboard(window.appStore.calls, window.appStore.settings); } catch(err) {}
+          }
+          if (typeof window.generateAndPopulateDailyReport === 'function') {
+            try { window.generateAndPopulateDailyReport(); } catch(err) {}
+          }
+          if (typeof window.renderSingleCallCards === 'function') {
+            try { window.renderSingleCallCards(); } catch(err) {}
+          }
+        }
+      }, true);
     })();
   </script>
 

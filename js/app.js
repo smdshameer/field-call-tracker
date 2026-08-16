@@ -267,13 +267,16 @@ class AppStore {
         }
       }
 
-      // Auto-set Date Closed when status is set to Completed
-      if (updatedFields.status === 'Completed') {
-        if (!updatedFields.dateClosed) {
-          updatedFields.dateClosed = currentCall.dateClosed || new Date().toISOString().split('T')[0];
+      // Auto-set Date Closed when status is set to Completed (case-insensitive)
+      const norm = (s) => (s || '').trim().toLowerCase();
+      if (updatedFields.status !== undefined && updatedFields.status !== null) {
+        if (norm(updatedFields.status) === 'completed') {
+          if (!updatedFields.dateClosed) {
+            updatedFields.dateClosed = currentCall.dateClosed || new Date().toISOString().split('T')[0];
+          }
+        } else if (norm(currentCall.status) === 'completed' && norm(updatedFields.status) !== 'completed') {
+          updatedFields.dateClosed = '';
         }
-      } else {
-        updatedFields.dateClosed = '';
       }
 
       // Handle ownCashSpent numeric parsing

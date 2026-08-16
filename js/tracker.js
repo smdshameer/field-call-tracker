@@ -372,14 +372,33 @@ class FieldCallTracker {
     if (editCallForm) {
       editCallForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        if (!this.activeEditId) return;
+        const form = editCallForm;
+        const activeId = this.activeEditId || (form ? form.getAttribute('data-active-id') : null) || window.activeEditId || window.currentEditCallId;
+        if (!activeId) {
+          console.error('No active call ID for editCallForm submission');
+          return;
+        }
 
         const adminEngSelect = document.getElementById('editAssignedEngineerSelect');
         const reassignedEng = (adminEngSelect && adminEngSelect.value) ? adminEngSelect.value : getV('editVisitedBy');
 
+        const distRaw = getV('editDistanceKm');
+        let distVal = null;
+        if (distRaw !== '' && distRaw !== null && distRaw !== undefined) {
+          const parsed = parseFloat(distRaw);
+          if (!isNaN(parsed) && parsed >= 0) {
+            distVal = parsed;
+          }
+        }
+
+        const userRate = (window.authStore && window.authStore.currentUser && window.authStore.currentUser.conveyanceRate) ? parseFloat(window.authStore.currentUser.conveyanceRate) : null;
+        const rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((window.appStore && window.appStore.settings && window.appStore.settings.ratePerKm) ? parseFloat(window.appStore.settings.ratePerKm) : 5);
+
         const updatedData = {
-          status: getV('editStatus', 'PENDING'),
-          distanceKm: getV('editDistanceKm', '0'),
+          status: getV('editStatus', 'Not Started'),
+          distanceKm: distVal !== null ? distVal : null,
+          conveyanceCost: distVal !== null ? Math.round(distVal * rate) : null,
+          isManualInput: distVal !== null,
           dateClosed: getV('editDateClosed', ''),
           visitedBy: reassignedEng,
           actionTaken: getV('editActionTaken', ''),
@@ -398,7 +417,7 @@ class FieldCallTracker {
         };
 
         if (window.appStore && typeof window.appStore.updateCall === 'function') {
-          window.appStore.updateCall(this.activeEditId, updatedData);
+          window.appStore.updateCall(activeId, updatedData);
         }
         closeDrawerFn();
         try { this.render(); } catch(e) {}
@@ -707,6 +726,10 @@ class FieldCallTracker {
       }
 
       this.activeEditId = call.id;
+      window.activeEditId = call.id;
+      window.currentEditCallId = call.id;
+      const form = document.getElementById('editCallForm');
+      if (form) form.setAttribute('data-active-id', String(call.id));
 
       const setV = (id, val) => {
         const el = document.getElementById(id);

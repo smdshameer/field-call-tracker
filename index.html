@@ -1537,10 +1537,10 @@
           </div>
 
           <div class="share-modal-action-btns" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 0.65rem; margin-top: 0.5rem; margin-bottom: 0.75rem;">
-            <button id="copyWhatsappBtn" class="btn btn-primary btn-sm" style="background: #25D366; border-color: #25D366;">
+            <button id="copyWhatsappBtn" type="button" onclick="window.copyDailyWhatsappReport()" class="btn btn-primary btn-sm" style="background: #25D366; border-color: #25D366;">
               <i class="fab fa-whatsapp"></i> Copy WhatsApp Text
             </button>
-            <button type="button" onclick="window.exporter ? window.exporter.copyConveyanceClaimText() : alert('Petrol claim copied!')" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+            <button id="copyConveyanceClaimBtn" type="button" onclick="window.copyConveyanceClaimText()" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
               <i class="fas fa-gas-pump"></i> Copy Petrol Claim Msg
             </button>
             <button id="downloadExcelReportBtn" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #1d4ed8, #1e40af);">
@@ -4043,6 +4043,120 @@
       }
     };
 
+    window.copyTextToClipboard = function(text, targetElement, successMsg) {
+      if (!text && targetElement) {
+        text = targetElement.value || targetElement.textContent || '';
+      }
+      if (!text && typeof window.generateAndPopulateDailyReport === 'function') {
+        text = window.generateAndPopulateDailyReport();
+      }
+      if (!text) {
+        alert('⚠️ No text available to copy.');
+        return;
+      }
+
+      var msg = successMsg || '✅ Copied to clipboard!';
+
+      function _fallbackExecCopy(str, el, alertMessage) {
+        var textarea = el;
+        var createdTemp = false;
+        try {
+          if (!textarea || textarea.tagName !== 'TEXTAREA') {
+            textarea = document.createElement('textarea');
+            textarea.value = str;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '0';
+            textarea.style.width = '2em';
+            textarea.style.height = '2em';
+            textarea.style.padding = '0';
+            textarea.style.border = 'none';
+            textarea.style.outline = 'none';
+            textarea.style.boxShadow = 'none';
+            textarea.style.background = 'transparent';
+            textarea.style.opacity = '0.01';
+            document.body.appendChild(textarea);
+            createdTemp = true;
+          }
+
+          var isReadOnly = textarea.hasAttribute('readonly');
+          textarea.removeAttribute('readonly');
+          textarea.focus();
+          textarea.select();
+          textarea.setSelectionRange(0, 999999);
+          if (isReadOnly) textarea.setAttribute('readonly', 'true');
+
+          var successful = document.execCommand('copy');
+          if (createdTemp && textarea.parentNode) {
+            document.body.removeChild(textarea);
+          }
+
+          if (successful) {
+            alert(alertMessage);
+          } else {
+            prompt('Copy text: Ctrl+C or Long-press -> Copy', str);
+          }
+        } catch (err) {
+          if (createdTemp && textarea && textarea.parentNode) {
+            document.body.removeChild(textarea);
+          }
+          prompt('Copy text: Ctrl+C or Long-press -> Copy', str);
+        }
+      }
+
+      if (navigator.clipboard && window.isSecureContext && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(function() {
+          alert(msg);
+        }).catch(function() {
+          _fallbackExecCopy(text, targetElement, msg);
+        });
+      } else {
+        _fallbackExecCopy(text, targetElement, msg);
+      }
+    };
+
+    window.copyDailyWhatsappReport = function() {
+      try {
+        var reportEl = document.getElementById('dailyReportText');
+        var text = reportEl ? reportEl.value : '';
+        if (!text) {
+          text = window.generateAndPopulateDailyReport();
+        }
+        window.copyTextToClipboard(text, reportEl, '✅ Daily Executive Report copied to clipboard!\n\nYou can now paste it directly into WhatsApp.');
+      } catch(err) {
+        console.error('[COPY DAILY REPORT ERROR]', err);
+      }
+    };
+
+    window.copyConveyanceClaimText = function() {
+      try {
+        var text = '';
+        if (window.exporter && typeof window.exporter.generateConveyanceClaimText === 'function') {
+          text = window.exporter.generateConveyanceClaimText();
+        }
+        if (!text) {
+          var calls = (window.appStore && window.appStore.calls) || window.INITIAL_FIELD_CALLS || [];
+          var todayCompleted = calls.filter(window.isCallCompletedToday || function() { return true; });
+          var user = (window.authStore && window.authStore.currentUser) || {};
+          var engName = user.name || 'Mohamed Shameer';
+          var rate = user.conveyanceRate || 5;
+          var dist = todayCompleted.reduce(function(sum, c) { return sum + (parseFloat(c.distanceKm) || 0); }, 0);
+          var cost = todayCompleted.reduce(function(sum, c) { return sum + (parseFloat(c.conveyanceCost) || ((parseFloat(c.distanceKm) || 0) * rate)); }, 0);
+          var cash = todayCompleted.reduce(function(sum, c) { return sum + (parseFloat(c.ownCashSpent) || 0); }, 0);
+          text = '*🏢 KS SMART SOLUTIONS - PETROL CONVEYANCE REIMBURSEMENT CLAIM*\n' +
+            '*📅 Date:* ' + new Date().toLocaleDateString('en-IN') + '\n' +
+            '*👷 Field Engineer:* ' + engName + '\n' +
+            '• *Total Distance Traveled Today:* *' + dist + ' km*\n' +
+            '• *Petrol Conveyance Expense:* *₹' + cost.toLocaleString('en-IN') + '*\n' +
+            '• *Own Cash Spent for Spares:* *₹' + cash.toLocaleString('en-IN') + '*\n' +
+            '• *Total Amount Claimed:* *₹' + (cost + cash).toLocaleString('en-IN') + '*';
+        }
+        window.copyTextToClipboard(text, null, '✅ Petrol Conveyance Claim Message copied to clipboard!\n\nYou can now paste it directly into WhatsApp for your Reporting Head.');
+      } catch(err) {
+        console.error('[COPY CONVEYANCE CLAIM ERROR]', err);
+      }
+    };
+
     window.copySingleCallText = function(id) {
       try {
         var el = document.getElementById('singleCallMsgText_' + id);
@@ -4061,25 +4175,7 @@
           return;
         }
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function() {
-            alert('✅ 7-Field WhatsApp message copied to clipboard!\n\nYou can now paste it into WhatsApp alongside the saved HM Signed Sheet photo.');
-          }).catch(function() {
-            if (el) {
-              el.focus();
-              el.select();
-              document.execCommand('copy');
-              alert('✅ 7-Field WhatsApp message copied to clipboard!');
-            }
-          });
-        } else if (el) {
-          el.focus();
-          el.select();
-          document.execCommand('copy');
-          alert('✅ 7-Field WhatsApp message copied to clipboard!');
-        } else {
-          alert('✅ 7-Field WhatsApp message:\n\n' + text);
-        }
+        window.copyTextToClipboard(text, el, '✅ 7-Field WhatsApp message copied to clipboard!\n\nYou can now paste it into WhatsApp alongside the saved HM Signed Sheet photo.');
       } catch(err) {
         console.error('[COPY SINGLE CALL TEXT ERROR]', err);
       }

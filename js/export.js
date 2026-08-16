@@ -97,15 +97,11 @@ class FieldCallExporter {
     if (copyWhatsappBtn && !copyWhatsappBtn._hasExporterListener) {
       copyWhatsappBtn._hasExporterListener = true;
       copyWhatsappBtn.addEventListener('click', () => {
-        const reportEl = document.getElementById('dailyReportText');
-        const text = reportEl ? reportEl.value : '';
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(() => {
-            alert('✅ Daily Report copied to clipboard! You can now paste it directly into WhatsApp or Email.');
-          }).catch(() => {
-            this.fallbackCopyText(text);
-          });
+        if (typeof window.copyDailyWhatsappReport === 'function') {
+          window.copyDailyWhatsappReport();
         } else {
+          const reportEl = document.getElementById('dailyReportText');
+          const text = reportEl ? reportEl.value : '';
           this.fallbackCopyText(text);
         }
       });
@@ -269,9 +265,18 @@ class FieldCallExporter {
   }
 
   fallbackCopyText(text) {
+    if (typeof window.copyTextToClipboard === 'function') {
+      const el = document.getElementById('dailyReportText');
+      window.copyTextToClipboard(text, el, '✅ Daily Executive Report copied to clipboard!\n\nYou can now paste it directly into WhatsApp.');
+      return;
+    }
     const el = document.getElementById('dailyReportText');
     if (el) {
+      el.removeAttribute('readonly');
+      el.focus();
       el.select();
+      el.setSelectionRange(0, 999999);
+      el.setAttribute('readonly', 'true');
       document.execCommand('copy');
       alert('✅ Daily Report copied to clipboard!');
     }

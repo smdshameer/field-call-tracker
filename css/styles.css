@@ -1756,6 +1756,17 @@ textarea.form-control {
   color: var(--text-muted);
 }
 
+/* Mobile Touch & Inline Action Improvements */
+.mobile-only-action {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-only-action {
+    display: block !important;
+  }
+}
+
 
 
 /* Print / PDF Report Media Styles */

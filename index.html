@@ -853,6 +853,16 @@
       <div class="sidebar-menu-list">
         <div class="sidebar-menu-heading">NAVIGATION MENU</div>
 
+        <button type="button" onclick="window.openModalFromSidebar(function(){ var m=document.getElementById('addCallModalOverlay'); if(m) m.classList.add('active'); })" class="sidebar-menu-btn" style="border: 1.5px solid #3b82f6; background: rgba(37, 99, 235, 0.05);">
+          <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff;">
+            <i class="fas fa-plus-circle"></i>
+          </div>
+          <div class="sidebar-btn-text">
+            <span class="sidebar-btn-title" style="color: #1877f2;">+ Log / Add Field Call</span>
+            <span class="sidebar-btn-sub">Create New Support Ticket</span>
+          </div>
+        </button>
+
         <button type="button" onclick="window.openModalFromSidebar(window.openOnboardingGuide)" class="sidebar-menu-btn">
           <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(29, 78, 216, 0.2)); color: #2563eb;">
             <i class="fas fa-graduation-cap"></i>
@@ -2261,12 +2271,29 @@
 
   <!-- DIAGNOSTIC + FALLBACK RENDERER: ensures data shows even if modules error -->
   <script>
-    // Global standalone drawer opener helper
+    // Global standalone drawer opener helper with guaranteed fallback
     window.openLogCallDrawer = function(id) {
       if (window.tracker && typeof window.tracker.openEditDrawer === 'function') {
         window.tracker.openEditDrawer(id);
-      } else {
-        console.error('window.tracker or openEditDrawer not found for ID:', id);
+        return;
+      }
+      // Direct DOM fallback
+      var call = null;
+      if (window.appStore && typeof window.appStore.getCallById === 'function') {
+        call = window.appStore.getCallById(id);
+      }
+      if (!call && window.INITIAL_FIELD_CALLS) {
+        call = window.INITIAL_FIELD_CALLS.find(function(c) { return String(c.id) === String(id); });
+      }
+      if (call) {
+        var overlay = document.getElementById('editDrawerOverlay');
+        var titleEl = document.getElementById('editDrawerTitle');
+        var statusEl = document.getElementById('editStatus');
+        var distEl = document.getElementById('editDistanceKm');
+        if (titleEl) titleEl.textContent = 'Call #' + call.id + ' - ' + (call.schoolName || 'School');
+        if (statusEl) statusEl.value = call.status || 'Not Started';
+        if (distEl) distEl.value = (call.distanceKm !== undefined && call.distanceKm !== null) ? call.distanceKm : '';
+        if (overlay) overlay.classList.add('active');
       }
     };
 
@@ -2331,11 +2358,16 @@
             html += '<tr data-id="' + c.id + '">' +
               '<td class="font-mono" style="font-weight: 700;">#' + c.id + '</td>' +
               '<td>' +
-                '<div style="font-weight: 700; color: var(--text-primary);">' + (c.schoolName || '') + '</div>' +
+                '<div style="font-weight: 700; color: var(--text-primary); cursor: pointer;" onclick="window.openLogCallDrawer(' + c.id + ')">' + (c.schoolName || '') + '</div>' +
                 '<div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">' +
                   'UDISE: <a href="' + (window.getStackSchoolsDirectUrl ? window.getStackSchoolsDirectUrl(c.udise, c.schoolName) : 'https://stackschools.com/') + '" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 700; text-decoration: underline;" title="Open direct school profile on StackSchools.com">' + (c.udise || '') + ' <i class="fas fa-external-link-alt" style="font-size:0.65rem; margin-left:2px;"></i></a>' +
                 '</div>' +
                 hmBadgeHTML +
+                '<div class="mobile-only-action" style="margin-top: 0.35rem;">' +
+                  '<button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); window.openLogCallDrawer(' + c.id + ')" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff; font-size: 0.74rem; font-weight: 800; padding: 0.25rem 0.65rem; border-radius: 6px; border: none; box-shadow: 0 2px 6px rgba(24,119,242,0.3); display: inline-flex; align-items: center; gap: 5px;">' +
+                    '<i class="fas fa-edit"></i> Log Call / Visit' +
+                  '</button>' +
+                '</div>' +
               '</td>' +
               '<td><span class="badge" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">' + (c.district || 'Nagapattinam') + '</span><br><small>' + (c.block || '') + '</small></td>' +
               '<td style="max-width: 220px; font-size: 0.82rem; color: var(--text-secondary);">' + (c.issue || '-') + '</td>' +

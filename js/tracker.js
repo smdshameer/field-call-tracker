@@ -1226,7 +1226,7 @@ class FieldCallTracker {
           <td class="font-mono" style="font-weight: 700;">#${c.id}</td>
           <td>
             <div style="font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
-              <span>${c.schoolName}</span>
+              <span style="cursor: pointer; color: var(--primary);" onclick="window.openLogCallDrawer(${c.id})">${c.schoolName}</span>
               ${todayBadgeHTML}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">
@@ -1236,6 +1236,12 @@ class FieldCallTracker {
               ${hmBadgeHTML}
               ${sitePhotoBadgeHTML}
               ${escalationBadgeHTML}
+            </div>
+            <!-- Mobile Instant Log Call Button (Zero Horizontal Scroll Required) -->
+            <div class="mobile-only-action" style="margin-top: 0.35rem;">
+              <button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); window.openLogCallDrawer(${c.id})" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff; font-size: 0.74rem; font-weight: 800; padding: 0.25rem 0.65rem; border-radius: 6px; border: none; box-shadow: 0 2px 6px rgba(24,119,242,0.3); display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fas fa-edit"></i> Log Call / Visit
+              </button>
             </div>
           </td>
           <td>

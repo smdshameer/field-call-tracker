@@ -1527,8 +1527,13 @@
           </p>
 
           <div class="form-group">
-            <label class="form-label" for="dailyReportText">Daily Summary Text</label>
-            <textarea id="dailyReportText" class="form-control font-mono" style="min-height: 220px; font-size: 0.8rem; line-height: 1.4;" readonly></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label class="form-label" for="dailyReportText" style="margin-bottom: 0; font-weight: 700;">DAILY SUMMARY TEXT</label>
+              <button type="button" onclick="window.generateAndPopulateDailyReport(); alert('✅ Daily report text refreshed!');" class="btn btn-sm btn-outline" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.3rem;">
+                <i class="fas fa-sync-alt"></i> Refresh Text
+              </button>
+            </div>
+            <textarea id="dailyReportText" class="form-control font-mono" style="min-height: 240px; font-size: 0.8rem; line-height: 1.45; color: #0f172a !important; background: #f8fafc !important; border: 1.5px solid #cbd5e1; padding: 0.75rem;" readonly></textarea>
           </div>
 
           <div class="share-modal-action-btns" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 0.65rem; margin-top: 0.5rem; margin-bottom: 0.75rem;">
@@ -3678,9 +3683,151 @@
       }
     };
 
+    window.generateAndPopulateDailyReport = function() {
+      try {
+        var calls = [];
+        if (window.appStore && Array.isArray(window.appStore.calls) && window.appStore.calls.length > 0) {
+          calls = window.appStore.calls;
+        } else if (Array.isArray(window.INITIAL_FIELD_CALLS) && window.INITIAL_FIELD_CALLS.length > 0) {
+          calls = window.INITIAL_FIELD_CALLS;
+        } else {
+          try {
+            var saved = localStorage.getItem('NAGAPATTINAM_FIELD_CALLS_V1');
+            if (saved) calls = JSON.parse(saved) || [];
+          } catch(e) {}
+        }
+
+        var user = null;
+        if (window.authStore && window.authStore.currentUser) {
+          user = window.authStore.currentUser;
+        } else {
+          try {
+            var uSaved = localStorage.getItem('NAGAPATTINAM_ACTIVE_USER_V1');
+            if (uSaved) user = JSON.parse(uSaved);
+          } catch(e) {}
+        }
+
+        var engineerName = (user && user.name) ? String(user.name).trim() : 'Mohamed Shameer';
+        var engineerEmpId = (user && user.empId) ? String(user.empId).trim() : '569';
+        var engineerEmail = (user && user.email) ? String(user.email).trim() : 'smssiddiq2011@gmail.com';
+        var engineerDistrict = (user && user.district) ? String(user.district).trim() : 'Nagapattinam';
+        var companyName = (user && user.companyName) ? String(user.companyName).trim() : 'KS SMART SOLUTIONS';
+        var projectName = (user && user.projectName) ? String(user.projectName).trim() : 'TAMIL NADU SCHOOL PROJECT';
+        var transportMode = (user && user.vehicleType) ? String(user.vehicleType).trim() : 'Own Bike';
+        var conveyanceRate = (user && user.conveyanceRate) ? Number(user.conveyanceRate) || 5 : 5;
+        var dailyTargetGoal = (user && user.dailyTargetGoal) ? Number(user.dailyTargetGoal) || 3 : 3;
+        var vehicleNoStr = (user && user.vehicleNo) ? ' (' + String(user.vehicleNo).trim() + ')' : '';
+        var homeLocation = (user && user.homeBaseLocation) ? String(user.homeBaseLocation).trim() : engineerDistrict + ', Tamil Nadu 611001';
+
+        var todayFormatted = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+        var total = calls.length;
+        var completed = calls.filter(function(c) { return String(c.status || '').trim() === 'Completed'; });
+        var inProgress = calls.filter(function(c) { return String(c.status || '').trim() === 'In Progress'; });
+        var notStarted = calls.filter(function(c) { var s = String(c.status || '').trim(); return s === 'Not Started' || !s; });
+        var incomplete = calls.filter(function(c) { return String(c.status || '').trim() === 'Incomplete'; });
+
+        var totalDistance = 0;
+        var totalConveyance = 0;
+        var totalOwnCash = 0;
+
+        calls.forEach(function(c) {
+          var d = parseFloat(c.distanceKm) || 0;
+          var co = parseFloat(c.conveyanceCost) || 0;
+          var ow = parseFloat(c.ownCashSpent) || 0;
+          totalDistance += d;
+          totalConveyance += co;
+          totalOwnCash += ow;
+        });
+
+        var blocks = ['Nagapattinam', 'Kelvelur', 'Thirumarugal', 'Vedaranyam', 'Thalainayar', 'Keezhaiyur'];
+        var blockSummary = '';
+        blocks.forEach(function(b) {
+          var bCalls = calls.filter(function(c) { return String(c.block || '').trim() === b; });
+          var bComp = bCalls.filter(function(c) { return String(c.status || '').trim() === 'Completed'; }).length;
+          blockSummary += '  • *' + b + ':* ' + bComp + '/' + bCalls.length + ' Completed\n';
+        });
+
+        var completedLogText = '';
+        var hmSignedCount = 0;
+        if (completed.length > 0) {
+          completedLogText = completed.map(function(c, idx) {
+            var spares = (c.materialsUsed && String(c.materialsUsed).trim()) ? String(c.materialsUsed).trim() : 'None';
+            var cashSpentVal = parseFloat(c.ownCashSpent) || 0;
+            var reasonStr = (c.ownCashReason && String(c.ownCashReason).trim()) ? ' *(For: ' + String(c.ownCashReason).trim() + ')*' : '';
+            var cashSpent = cashSpentVal > 0 ? '*₹' + cashSpentVal.toLocaleString('en-IN') + '*' + reasonStr : '₹0 (No cash spent)';
+            var action = (c.actionTaken && String(c.actionTaken).trim()) ? String(c.actionTaken).trim() : 'Hi-Tech Lab Equipment Serviced & Verified';
+            var categoryStr = (c.category && String(c.category).trim()) ? String(c.category).trim() : 'HELPLINE TICKET';
+            var hmSignedStr = c.hmSignedSheet ? 'Attached ✅' : 'Pending ⚠️';
+            if (c.hmSignedSheet) hmSignedCount++;
+            var hmNameStr = c.hmName ? ' (HM: ' + String(c.hmName).trim() + ')' : '';
+            var remarkStr = (c.remark && String(c.remark).trim()) ? String(c.remark).trim() : 'All equipments working fine';
+            var distVal = (c.distanceKm !== null && c.distanceKm !== undefined && !isNaN(parseFloat(c.distanceKm))) ? c.distanceKm + ' km' : '0 km';
+
+            return (idx + 1) + '. *' + (c.schoolName || 'School') + '* (*' + (c.block || 'Nagapattinam') + ' Block* | *' + categoryStr + '*)\n' +
+              '   • *UDISE Code:* ' + (c.udise || 'N/A') + '\n' +
+              '   • *Issue Reported:* ' + (c.issue || 'N/A') + '\n' +
+              '   • *Action Taken to Rectify:* ' + action + '\n' +
+              '   • *Spares Replaced:* ' + spares + '\n' +
+              '   • *Own Cash Spent for Spares:* ' + cashSpent + '\n' +
+              '   • *Remark:* ' + remarkStr + '\n' +
+              '   • *School HM Signed Sheet:* ' + hmSignedStr + hmNameStr + '\n' +
+              '   • *Inter-School Distance:* ' + distVal + '\n' +
+              '   • *Field Engineer:* ' + (c.visitedBy || engineerName) + ' | *Date Closed:* ' + (c.dateClosed || 'N/A');
+          }).join('\n\n');
+        } else {
+          completedLogText = '  - No completed calls logged yet today.';
+        }
+
+        var targetStatusStr = completed.length >= dailyTargetGoal
+          ? '*' + completed.length + ' / ' + dailyTargetGoal + ' Calls Completed (100% Target Met)* ✅'
+          : '*' + completed.length + ' / ' + dailyTargetGoal + ' Calls Completed (' + (dailyTargetGoal - completed.length) + ' remaining to reach target)* ⚠️';
+
+        var reportText = '*🏢 ' + companyName.toUpperCase() + ' - ' + projectName.toUpperCase() + '*\n' +
+          '*📊 DAILY FIELD EXECUTIVE EVENING REPORT*\n' +
+          '*📅 Date:* ' + todayFormatted + '\n' +
+          '*📍 District:* ' + engineerDistrict + ' | *🏠 Home Base:* ' + homeLocation + '\n' +
+          '*👷 Field Engineer:* ' + engineerName + ' (*Emp ID:* ' + engineerEmpId + ' | ' + engineerEmail + ')\n' +
+          '*🏍️ Transport:* ' + transportMode + vehicleNoStr + ' (Reimbursement @ ₹' + conveyanceRate + '/km)\n' +
+          '============================================\n\n' +
+          '*🎯 DAILY TARGET STATUS (MIN ' + dailyTargetGoal + ' CALLS/DAY):*\n' +
+          '• ' + targetStatusStr + '\n' +
+          '• *HM Signed Report Sheets:* *' + hmSignedCount + ' / ' + (completed.length > 0 ? completed.length : 1) + ' Attached*\n\n' +
+          '*📈 EXECUTIVE TICKETING SUMMARY:*\n' +
+          '• *Total Field Tickets:* ' + total + '\n' +
+          '• *Completed Calls:* *' + completed.length + '* (*' + (total > 0 ? Math.round((completed.length / total) * 100) : 0) + '%* completion rate)\n' +
+          '• *In Progress:* ' + inProgress.length + '\n' +
+          '• *Not Started / Pending:* ' + notStarted.length + '\n' +
+          '• *Incomplete:* ' + incomplete.length + '\n\n' +
+          '*💰 INTER-SCHOOL BIKE CONVEYANCE & EXPENSES:*\n' +
+          '• *Total Round-Trip Distance:* *' + totalDistance + ' km* (Home → Schools → Home)\n' +
+          '• *Total Conveyance Expense:* *₹' + totalConveyance.toLocaleString('en-IN') + '* (at ₹' + conveyanceRate + '/km)\n' +
+          '• *Total Own Cash Spent on Spares:* *₹' + totalOwnCash.toLocaleString('en-IN') + '*\n\n' +
+          '*📍 BLOCK-WISE PROGRESS:*\n' +
+          blockSummary.trim() + '\n\n' +
+          '============================================\n' +
+          '*🛠️ COMPLETED CALLS - ACTION, SPARES & HM SIGNATURE LOG (' + completed.length + ' Call(s)):*\n' +
+          '--------------------------------------------\n' +
+          completedLogText + '\n\n' +
+          '--------------------------------------------\n' +
+          '*Report generated automatically via KS Smart Solutions Field Call Tracker.*';
+
+        var textarea = document.getElementById('dailyReportText');
+        if (textarea) {
+          textarea.value = reportText;
+          textarea.textContent = reportText;
+        }
+        return reportText;
+      } catch(err) {
+        console.error('[DAILY REPORT GENERATOR ERROR]', err);
+        return '';
+      }
+    };
+
     window.openShareModal = function() {
+      window.generateAndPopulateDailyReport();
       if (window.exporter && typeof window.exporter.updateDailyReportText === 'function') {
-        window.exporter.updateDailyReportText();
+        try { window.exporter.updateDailyReportText(); } catch(e) {}
       }
       var ov = document.getElementById('shareModalOverlay');
       if (ov) {
@@ -3690,11 +3837,18 @@
         ov.style.pointerEvents = 'auto';
       }
       setTimeout(function() {
-        if (window.exporter && typeof window.exporter.updateDailyReportText === 'function') {
-          window.exporter.updateDailyReportText();
-        }
+        window.generateAndPopulateDailyReport();
       }, 60);
     };
+
+    // Auto populate on page readiness
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(window.generateAndPopulateDailyReport, 200);
+      });
+    } else {
+      setTimeout(window.generateAndPopulateDailyReport, 200);
+    }
 
     window.closeShareModal = function() {
       var ov = document.getElementById('shareModalOverlay');

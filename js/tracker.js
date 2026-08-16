@@ -227,22 +227,47 @@ class FieldCallTracker {
     if (closeEditDrawer) closeEditDrawer.addEventListener('click', closeDrawerFn);
     if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeDrawerFn);
 
-    // Live Auto-calculate conveyance in edit form
+    // Live Auto-calculate conveyance in edit & add forms
+    const updateConveyanceValue = (distEl, costEl) => {
+      if (!distEl || !costEl) return;
+      const dist = parseFloat(distEl.value);
+      if (!isNaN(dist) && dist >= 0) {
+        const userRate = (window.authStore && window.authStore.currentUser && window.authStore.currentUser.conveyanceRate) ? parseFloat(window.authStore.currentUser.conveyanceRate) : null;
+        const rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((window.appStore && window.appStore.settings && window.appStore.settings.ratePerKm) ? parseFloat(window.appStore.settings.ratePerKm) : 5);
+        costEl.value = `₹${Math.round(dist * rate)}`;
+      } else {
+        costEl.value = '';
+      }
+    };
+
     const editDistanceInput = document.getElementById('editDistanceKm');
     const editConveyanceInput = document.getElementById('editConveyanceCost');
+    const addDistanceInput = document.getElementById('addDistanceKm');
+    const addConveyanceInput = document.getElementById('addConveyanceCost');
+    const editStatusSelect = document.getElementById('editStatus');
+    const editDateClosedInput = document.getElementById('editDateClosed');
+
     if (editDistanceInput && editConveyanceInput) {
-      editDistanceInput.addEventListener('input', (e) => {
-        const dist = parseFloat(e.target.value);
-        if (!isNaN(dist) && dist >= 0) {
-          const rate = window.appStore.settings.ratePerKm || 5;
-          editConveyanceInput.value = `₹${(dist * rate).toFixed(0)}`;
-        } else {
-          editConveyanceInput.value = '';
-        }
+      ['input', 'change', 'keyup', 'paste'].forEach(evtType => {
+        editDistanceInput.addEventListener(evtType, () => updateConveyanceValue(editDistanceInput, editConveyanceInput));
       });
     }
 
+    if (addDistanceInput && addConveyanceInput) {
+      ['input', 'change', 'keyup', 'paste'].forEach(evtType => {
+        addDistanceInput.addEventListener(evtType, () => updateConveyanceValue(addDistanceInput, addConveyanceInput));
+      });
+    }
 
+    if (editStatusSelect && editDateClosedInput) {
+      editStatusSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'Completed') {
+          if (!editDateClosedInput.value) {
+            editDateClosedInput.value = new Date().toISOString().split('T')[0];
+          }
+        }
+      });
+    }
 
     // HM Signed Sheet File Input Handler
     const hmSignedInput = document.getElementById('editHmSignedSheetInput');
@@ -376,6 +401,14 @@ class FieldCallTracker {
           window.appStore.updateCall(this.activeEditId, updatedData);
         }
         closeDrawerFn();
+        try { this.render(); } catch(e) {}
+        try {
+          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function' && window.appStore) {
+            window.dashboard.updateDashboard(window.appStore.calls, window.appStore.settings);
+          }
+        } catch(e) {}
+        try { if (typeof window.generateAndPopulateDailyReport === 'function') window.generateAndPopulateDailyReport(); } catch(e) {}
+        try { if (typeof window.renderSingleCallCards === 'function') window.renderSingleCallCards(); } catch(e) {}
       });
     }
 
@@ -424,6 +457,14 @@ class FieldCallTracker {
           window.appStore.addCall(newCallData);
         }
         closeAddFn();
+        try { this.render(); } catch(e) {}
+        try {
+          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function' && window.appStore) {
+            window.dashboard.updateDashboard(window.appStore.calls, window.appStore.settings);
+          }
+        } catch(e) {}
+        try { if (typeof window.generateAndPopulateDailyReport === 'function') window.generateAndPopulateDailyReport(); } catch(e) {}
+        try { if (typeof window.renderSingleCallCards === 'function') window.renderSingleCallCards(); } catch(e) {}
       });
     }
 
@@ -678,13 +719,16 @@ class FieldCallTracker {
 
       setT('editDrawerTitle', `Call #${call.id} - ${call.schoolName}`);
       setV('editStatus', call.status || 'Not Started');
-      setV('editDistanceKm', call.distanceKm !== null && call.distanceKm !== undefined ? call.distanceKm : '');
+      const distNum = (call.distanceKm !== null && call.distanceKm !== undefined && call.distanceKm !== '' && !isNaN(parseFloat(call.distanceKm))) ? parseFloat(call.distanceKm) : null;
+      setV('editDistanceKm', distNum !== null ? distNum : '');
       
-      const rate = (window.appStore && window.appStore.settings) ? (window.appStore.settings.ratePerKm || 5) : 5;
-      const conveyance = (call.distanceKm !== null && call.distanceKm !== undefined && call.distanceKm >= 0) ? `₹${(call.distanceKm * rate).toFixed(0)}` : '';
+      const userRate = (window.authStore && window.authStore.currentUser && window.authStore.currentUser.conveyanceRate) ? parseFloat(window.authStore.currentUser.conveyanceRate) : null;
+      const rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((window.appStore && window.appStore.settings && window.appStore.settings.ratePerKm) ? parseFloat(window.appStore.settings.ratePerKm) : 5);
+      const conveyance = (distNum !== null && distNum >= 0) ? `₹${Math.round(distNum * rate)}` : '';
       setV('editConveyanceCost', conveyance);
 
-      setV('editDateClosed', call.dateClosed || '');
+      const defaultDateClosed = (call.status === 'Completed' && !call.dateClosed) ? new Date().toISOString().split('T')[0] : (call.dateClosed || '');
+      setV('editDateClosed', defaultDateClosed);
       setV('editVisitedBy', call.visitedBy || '');
       setV('editActionTaken', call.actionTaken || '');
       setV('editMaterialsUsed', call.materialsUsed || '');

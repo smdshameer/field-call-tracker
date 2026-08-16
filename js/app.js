@@ -208,7 +208,30 @@ class AppStore {
   }
 
   notify() {
-    this.listeners.forEach(fn => fn(this.calls, this.settings));
+    this.listeners.forEach(fn => {
+      try { fn(this.calls, this.settings); } catch(e) { console.error('Listener error:', e); }
+    });
+    // Explicit global notification hooks for zero-delay UI sync across Mobile & Desktop
+    try {
+      if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
+        window.dashboard.updateDashboard(this.calls, this.settings);
+      }
+    } catch(e) {}
+    try {
+      if (window.tracker && typeof window.tracker.render === 'function') {
+        window.tracker.render();
+      }
+    } catch(e) {}
+    try {
+      if (typeof window.generateAndPopulateDailyReport === 'function') {
+        window.generateAndPopulateDailyReport();
+      }
+    } catch(e) {}
+    try {
+      if (typeof window.renderSingleCallCards === 'function') {
+        window.renderSingleCallCards();
+      }
+    } catch(e) {}
   }
 
   // Alias used by ipPingEngine.js
@@ -230,9 +253,12 @@ class AppStore {
       // Auto-calculate conveyance cost ONLY when distance is manually provided by engineer
       if ('distanceKm' in updatedFields) {
         const dist = parseFloat(updatedFields.distanceKm);
+        const userRate = (window.authStore && window.authStore.currentUser && window.authStore.currentUser.conveyanceRate) ? parseFloat(window.authStore.currentUser.conveyanceRate) : null;
+        const rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((this.settings && this.settings.ratePerKm) ? parseFloat(this.settings.ratePerKm) : 5);
+
         if (!isNaN(dist) && dist >= 0) {
           updatedFields.distanceKm = dist;
-          updatedFields.conveyanceCost = dist * (this.settings.ratePerKm || 5);
+          updatedFields.conveyanceCost = Math.round(dist * rate);
           updatedFields.isManualInput = true;
         } else {
           updatedFields.distanceKm = null;
@@ -243,8 +269,8 @@ class AppStore {
 
       // Auto-set Date Closed when status is set to Completed
       if (updatedFields.status === 'Completed') {
-        if (!updatedFields.dateClosed && !currentCall.dateClosed) {
-          updatedFields.dateClosed = new Date().toISOString().split('T')[0];
+        if (!updatedFields.dateClosed) {
+          updatedFields.dateClosed = currentCall.dateClosed || new Date().toISOString().split('T')[0];
         }
       } else {
         updatedFields.dateClosed = '';

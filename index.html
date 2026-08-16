@@ -3311,7 +3311,7 @@
       };
 
       // === RESET ALL APP DATA FUNCTION (SINGLE BUTTON: WIPES ALL CALLS & SYSTEM DATA TO 0) ===
-      window._resetAllAppData = function() {
+      window._resetAllAppData = async function() {
         var confirmReset = confirm(
           "🔴 CONFIRM SYSTEM DATA RESET:\n\n" +
           "Are you sure you want to reset all system data and delete all call records?\n\n" +
@@ -3325,11 +3325,26 @@
 
         if (window.appStore) {
           const userKey = window.appStore.getUserPartitionKey();
-          if (userKey) localStorage.setItem(userKey, '[]');
+          if (userKey) {
+            localStorage.setItem(userKey, '[]');
+            localStorage.setItem(`KSSMART_VERSION_${userKey}`, '2026_08_17_V4');
+          }
           window.appStore.calls = [];
           if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
         }
 
+        // Wipe cloud calls so all devices reset to 0
+        try {
+          await fetch('/api/calls', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ calls: [], wasReset: true, timestamp: Date.now() })
+          });
+        } catch(e) {}
+
+        if (typeof window.updateGlobalKpiCards === 'function') {
+          window.updateGlobalKpiCards([], { ratePerKm: 5 });
+        }
         if (window.tracker) {
           try { window.tracker.render(); } catch(e) {}
         }

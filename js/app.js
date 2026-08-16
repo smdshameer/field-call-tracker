@@ -70,13 +70,18 @@ class AppStore {
     const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
 
     // 2. Load User-Specific Partition Data (Zero Data Loss Architecture)
-    let loadedCalls = null;
-
     if (isExplicitlyReset) {
       this.calls = [];
-      this.saveCalls();
+      localStorage.setItem(partitionKey, '[]');
+      localStorage.setItem(STORAGE_KEY, '[]');
+      this.notify();
+      if (typeof window.updateGlobalKpiCards === 'function') {
+        window.updateGlobalKpiCards([], this.settings);
+      }
       return;
     }
+
+    let loadedCalls = null;
 
     if (partitionVersion === DATASET_VERSION) {
       const userSpecificCalls = localStorage.getItem(partitionKey);
@@ -171,53 +176,69 @@ class AppStore {
     this.updateCloudSyncBadge('syncing');
 
     try {
+      const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
+      if (isExplicitlyReset && !force) {
+        this.calls = [];
+        this.notify();
+        this.updateCloudSyncBadge('synced');
+        return;
+      }
+
       const res = await fetch('/api/calls?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data && Array.isArray(data.calls) && data.calls.length > 0) {
-          let hasChanges = false;
-          
-          if (this.calls.length === 0 || force) {
-            this.calls = data.calls;
-            hasChanges = true;
-          } else {
-            const serverMap = new Map();
-            data.calls.forEach(sc => serverMap.set(String(sc.id), sc));
-
-            this.calls.forEach((localCall, idx) => {
-              const sc = serverMap.get(String(localCall.id));
-              if (sc) {
-                const distDiff = String(sc.distanceKm || '') !== String(localCall.distanceKm || '');
-                const statusDiff = String(sc.status || '').toLowerCase() !== String(localCall.status || '').toLowerCase();
-                const costDiff = String(sc.conveyanceCost || '') !== String(localCall.conveyanceCost || '');
-                const actionDiff = String(sc.actionTaken || '') !== String(localCall.actionTaken || '');
-                const closedDiff = String(sc.dateClosed || '') !== String(localCall.dateClosed || '');
-                const visitedDiff = String(sc.visitedBy || '') !== String(localCall.visitedBy || '');
-
-                if (distDiff || statusDiff || costDiff || actionDiff || closedDiff || visitedDiff) {
-                  this.calls[idx] = { ...localCall, ...sc };
-                  hasChanges = true;
-                }
-                serverMap.delete(String(localCall.id));
-              }
-            });
-
-            // Append any newly created calls from other devices
-            serverMap.forEach(newSc => {
-              this.calls.push(newSc);
-              hasChanges = true;
-            });
-          }
-
-          if (hasChanges) {
-            this.enrichCalls();
-            const partitionKey = this.getUserPartitionKey();
-            const dataStr = JSON.stringify(this.calls);
-            localStorage.setItem(partitionKey, dataStr);
-            localStorage.setItem(STORAGE_KEY, dataStr);
+        if (data && Array.isArray(data.calls)) {
+          if (data.calls.length === 0 && isExplicitlyReset) {
+            this.calls = [];
             this.notify();
+            this.updateCloudSyncBadge('synced');
+            return;
           }
 
+          if (data.calls.length > 0 && !isExplicitlyReset) {
+            let hasChanges = false;
+            
+            if (this.calls.length === 0 || force) {
+              this.calls = data.calls;
+              hasChanges = true;
+            } else {
+              const serverMap = new Map();
+              data.calls.forEach(sc => serverMap.set(String(sc.id), sc));
+
+              this.calls.forEach((localCall, idx) => {
+                const sc = serverMap.get(String(localCall.id));
+                if (sc) {
+                  const distDiff = String(sc.distanceKm || '') !== String(localCall.distanceKm || '');
+                  const statusDiff = String(sc.status || '').toLowerCase() !== String(localCall.status || '').toLowerCase();
+                  const costDiff = String(sc.conveyanceCost || '') !== String(localCall.conveyanceCost || '');
+                  const actionDiff = String(sc.actionTaken || '') !== String(localCall.actionTaken || '');
+                  const closedDiff = String(sc.dateClosed || '') !== String(localCall.dateClosed || '');
+                  const visitedDiff = String(sc.visitedBy || '') !== String(localCall.visitedBy || '');
+
+                  if (distDiff || statusDiff || costDiff || actionDiff || closedDiff || visitedDiff) {
+                    this.calls[idx] = { ...localCall, ...sc };
+                    hasChanges = true;
+                  }
+                  serverMap.delete(String(localCall.id));
+                }
+              });
+
+              // Append any newly created calls from other devices
+              serverMap.forEach(newSc => {
+                this.calls.push(newSc);
+                hasChanges = true;
+              });
+            }
+
+            if (hasChanges) {
+              this.enrichCalls();
+              const partitionKey = this.getUserPartitionKey();
+              const dataStr = JSON.stringify(this.calls);
+              localStorage.setItem(partitionKey, dataStr);
+              localStorage.setItem(STORAGE_KEY, dataStr);
+              this.notify();
+            }
+          }
           this.updateCloudSyncBadge('synced');
         } else {
           // Cloud has no calls yet - push local calls to initialize cloud!

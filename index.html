@@ -3,6 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <script>
+    // Proactively kill stale Service Workers & CacheStorage on normal tabs
+    try {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+        });
+      }
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        caches.keys().then(function(names) {
+          for (var i = 0; i < names.length; i++) { caches.delete(names[i]); }
+        });
+      }
+    } catch(e) {}
+
     // Global error catcher — display JS errors on page for debugging
     window._jsErrors = [];
     window.onerror = function(msg, url, line, col, error) {

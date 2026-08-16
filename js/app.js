@@ -213,6 +213,11 @@ class AppStore {
     });
     // Explicit global notification hooks for zero-delay UI sync across Mobile & Desktop
     try {
+      if (typeof window.updateGlobalKpiCards === 'function') {
+        window.updateGlobalKpiCards(this.calls, this.settings);
+      }
+    } catch(e) {}
+    try {
       if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
         window.dashboard.updateDashboard(this.calls, this.settings);
       }

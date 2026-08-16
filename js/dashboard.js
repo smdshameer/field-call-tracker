@@ -32,6 +32,12 @@ class FieldCallDashboard {
   updateDashboard(calls, settings) {
     if (!calls || !Array.isArray(calls)) return;
     
+    try {
+      if (typeof window.updateGlobalKpiCards === 'function') {
+        window.updateGlobalKpiCards(calls, settings);
+      }
+    } catch(e) {}
+
     const rate = (settings && settings.ratePerKm) ? parseFloat(settings.ratePerKm) : 5;
     
     // Normalize status for case-insensitive comparison

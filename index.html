@@ -2312,6 +2312,96 @@
       }
     };
 
+    // Universal Global KPI Cards Updater (Mobile & Desktop)
+    window.updateGlobalKpiCards = function(callsList, settingsObj) {
+      try {
+        var calls = callsList || (window.appStore && window.appStore.calls) || window.INITIAL_FIELD_CALLS || [];
+        if (!Array.isArray(calls)) return;
+
+        var user = (window.authStore && window.authStore.currentUser) || null;
+        var userRate = (user && user.conveyanceRate) ? parseFloat(user.conveyanceRate) : null;
+        var rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((settingsObj && settingsObj.ratePerKm) ? parseFloat(settingsObj.ratePerKm) : ((window.appStore && window.appStore.settings && window.appStore.settings.ratePerKm) ? parseFloat(window.appStore.settings.ratePerKm) : 5));
+
+        var norm = function(s) { return String(s || '').trim().toLowerCase(); };
+
+        var totalCalls = calls.length;
+        var completedCalls = 0;
+        var inProgressCalls = 0;
+        var notStartedCalls = 0;
+        var incompleteCalls = 0;
+        var totalDistance = 0;
+        var totalConveyance = 0;
+        var totalAgeDays = 0;
+
+        for (var i = 0; i < calls.length; i++) {
+          var c = calls[i];
+          var st = norm(c.status);
+          if (st === 'completed') {
+            completedCalls++;
+          } else if (st === 'in progress') {
+            inProgressCalls++;
+          } else if (st === 'not started' || st === 'pending' || st === '') {
+            notStartedCalls++;
+          } else if (st === 'incomplete' || st === 'cancelled') {
+            incompleteCalls++;
+          } else {
+            notStartedCalls++;
+          }
+
+          var dist = parseFloat(c.distanceKm);
+          if (!isNaN(dist) && dist > 0) {
+            totalDistance += dist;
+            var cost = (c.conveyanceCost !== null && c.conveyanceCost !== undefined && parseFloat(c.conveyanceCost) >= 0)
+              ? parseFloat(c.conveyanceCost)
+              : Math.round(dist * rate);
+            totalConveyance += cost;
+          }
+
+          var age = parseInt(c.ageDays);
+          if (!isNaN(age) && age >= 0) {
+            totalAgeDays += age;
+          }
+        }
+
+        var avgAge = totalCalls > 0 ? Math.round(totalAgeDays / totalCalls) : 0;
+        var completionPct = totalCalls > 0 ? Math.round((completedCalls / totalCalls) * 100) : 0;
+
+        var setT = function(id, val) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = val;
+        };
+
+        setT('kpiTotalCalls', totalCalls);
+        setT('kpiCompleted', completedCalls);
+        setT('kpiCompletedSubtext', completionPct + '% completion rate');
+        setT('kpiInProgress', inProgressCalls);
+        setT('kpiNotStarted', notStartedCalls);
+        setT('kpiIncomplete', incompleteCalls);
+        setT('kpiConveyance', '₹' + totalConveyance.toLocaleString('en-IN'));
+        setT('kpiConveyanceSubtext', totalDistance.toLocaleString('en-IN') + ' km total traveled');
+        setT('kpiAvgAge', avgAge + ' days');
+
+        // Daily target banner
+        setT('targetCountDisplay', completedCalls + ' / 3 Calls');
+        var targetBar = document.getElementById('targetProgressBar');
+        if (targetBar) {
+          var pct = Math.min(100, Math.round((completedCalls / 3) * 100));
+          targetBar.style.width = pct + '%';
+        }
+        var targetStatus = document.getElementById('targetStatusText');
+        if (targetStatus) {
+          if (completedCalls >= 3) {
+            targetStatus.innerHTML = '<strong style="color: var(--success);">🎉 Daily target achieved (' + completedCalls + '/3 completed)!</strong>';
+          } else {
+            var rem = 3 - completedCalls;
+            targetStatus.textContent = '⚠️ ' + rem + ' call(s) remaining to reach daily target of 3';
+          }
+        }
+      } catch(err) {
+        console.error('[updateGlobalKpiCards Error]', err);
+      }
+    };
+
     (function() {
       // Get calls data from wherever it's available
       function _getCalls() {
@@ -2328,6 +2418,11 @@
       function _fallbackRender() {
         var calls = _getCalls();
         console.log('[FALLBACK] calls count:', calls.length, 'appStore exists:', !!window.appStore);
+
+        // Always update KPI Cards first
+        if (typeof window.updateGlobalKpiCards === 'function') {
+          window.updateGlobalKpiCards(calls, window.appStore ? window.appStore.settings : {});
+        }
 
         // 1. Check if tracker instance can render natively
         if (window.tracker && typeof window.tracker.render === 'function') {

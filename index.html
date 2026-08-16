@@ -45,7 +45,9 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('sw.js').catch(function(err) {
+        navigator.serviceWorker.register('sw.js?v=115.0').then(function(reg) {
+          if (reg && reg.update) reg.update();
+        }).catch(function(err) {
           console.log('ServiceWorker registration failed: ', err);
         });
       });
@@ -933,8 +935,8 @@
             <span class="stat-label">Completed</span>
             <div class="stat-icon green"><i class="fas fa-check-double"></i></div>
           </div>
-          <span class="stat-value" id="kpiCompleted" style="color: var(--status-completed-text);">0</span>
-          <span class="stat-sub" id="kpiCompletedSubtext">0% completion rate</span>
+          <span class="stat-value" id="kpiCompleted" style="color: var(--status-completed-text);">1</span>
+          <span class="stat-sub" id="kpiCompletedSubtext">2% completion rate</span>
         </div>
       </div>
 
@@ -957,7 +959,7 @@
             <span class="stat-label">Not Started</span>
             <div class="stat-icon purple"><i class="fas fa-clock"></i></div>
           </div>
-          <span class="stat-value" id="kpiNotStarted" style="color: var(--status-pending-text);">0</span>
+          <span class="stat-value" id="kpiNotStarted" style="color: var(--status-pending-text);">52</span>
           <span class="stat-sub">Awaiting field visit</span>
         </div>
       </div>
@@ -981,7 +983,7 @@
             <span class="stat-label">Avg Ticket Age</span>
             <div class="stat-icon red"><i class="fas fa-calendar-day"></i></div>
           </div>
-          <span class="stat-value" id="kpiAvgAge">0 days</span>
+          <span class="stat-value" id="kpiAvgAge">149 days</span>
           <span class="stat-sub">Ticket raised duration</span>
         </div>
       </div>

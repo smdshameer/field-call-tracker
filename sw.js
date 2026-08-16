@@ -1,16 +1,20 @@
 // Service Worker for Field Call Tracker PWA
-const CACHE_NAME = 'field-call-tracker-v1';
+const CACHE_NAME = 'field-call-tracker-v115';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.map(k => caches.delete(k))
+    )).then(() => clients.claim())
+  );
 });
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
   );
 });

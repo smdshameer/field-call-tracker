@@ -104,6 +104,24 @@ class AppStore {
       } catch(e) {}
     }
 
+    // Ensure all 53 canonical baseline calls are included with full parity
+    const initialData = window.INITIAL_FIELD_CALLS || [];
+    if (initialData.length > 0) {
+      const existingMap = new Map();
+      this.calls.forEach(c => existingMap.set(String(c.id), c));
+
+      let addedMissing = false;
+      initialData.forEach(baseCall => {
+        if (!existingMap.has(String(baseCall.id))) {
+          this.calls.push(JSON.parse(JSON.stringify(baseCall)));
+          addedMissing = true;
+        }
+      });
+      if (addedMissing) {
+        this.calls.sort((a, b) => (parseInt(a.id) || 0) - (parseInt(b.id) || 0));
+      }
+    }
+
     // Auto-enrich calls with district, block, and IP Address if missing
     this.enrichCalls();
 

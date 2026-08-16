@@ -495,28 +495,35 @@ ${routeSequenceText}
   }
 
   switchShareTab(tab) {
-    const summaryView = document.getElementById('shareSummaryView');
-    const singleView = document.getElementById('shareSingleView');
-    const btnSummary = document.getElementById('shareTabSummaryBtn');
-    const btnSingle = document.getElementById('shareTabSingleBtn');
-
-    if (tab === 'single') {
-      if (summaryView) summaryView.style.display = 'none';
-      if (singleView) singleView.style.display = 'block';
-      if (btnSummary) { btnSummary.className = 'btn btn-sm btn-outline'; }
-      if (btnSingle) { btnSingle.className = 'btn btn-sm btn-primary'; }
-      this.renderSingleCallCards();
+    if (typeof window.switchShareTab === 'function') {
+      window.switchShareTab(tab);
     } else {
-      if (summaryView) summaryView.style.display = 'block';
-      if (singleView) singleView.style.display = 'none';
-      if (btnSummary) { btnSummary.className = 'btn btn-sm btn-primary'; }
-      if (btnSingle) { btnSingle.className = 'btn btn-sm btn-outline'; }
+      const summaryView = document.getElementById('shareSummaryView');
+      const singleView = document.getElementById('shareSingleView');
+      const btnSummary = document.getElementById('shareTabSummaryBtn');
+      const btnSingle = document.getElementById('shareTabSingleBtn');
+
+      if (tab === 'single') {
+        if (summaryView) summaryView.style.display = 'none';
+        if (singleView) singleView.style.display = 'block';
+        if (btnSummary) { btnSummary.className = 'btn btn-sm btn-outline'; }
+        if (btnSingle) { btnSingle.className = 'btn btn-sm btn-primary'; }
+        this.renderSingleCallCards();
+      } else {
+        if (summaryView) summaryView.style.display = 'block';
+        if (singleView) singleView.style.display = 'none';
+        if (btnSummary) { btnSummary.className = 'btn btn-sm btn-primary'; }
+        if (btnSingle) { btnSingle.className = 'btn btn-sm btn-outline'; }
+      }
     }
   }
 
   generateSingleCallWhatsappText(c) {
+    if (typeof window.generateSingleCallWhatsappText === 'function') {
+      return window.generateSingleCallWhatsappText(c);
+    }
     if (!c) return '';
-    const S = (v, def = '') => (v !== null && v !== undefined) ? String(v).trim() : def;
+    const S = (v, def = '') => (v !== null && v !== undefined && String(v).trim() !== '') ? String(v).trim() : def;
     const user = window.authStore ? window.authStore.currentUser : null;
     const district = (S(c.district) || (user ? S(user.district) : '') || 'NAGAPATTINAM').toUpperCase();
     const rawSpares = S(c.materialsUsed);
@@ -531,11 +538,11 @@ ${routeSequenceText}
 
 2.DISTRICT: ${district}
 
-3.BLOCK : ${c.block || 'N/A'}
+3.BLOCK : ${S(c.block, 'N/A')}
 
-4.SCHOOL NAME : ${c.schoolName || 'N/A'}
+4.SCHOOL NAME : ${S(c.schoolName, 'N/A')}
 
-5.ISSUE : ${c.issue || 'N/A'}
+5.ISSUE : ${S(c.issue, 'N/A')}
 
 6.RECTIFIED : ${rectifiedText}
 
@@ -543,15 +550,15 @@ ${routeSequenceText}
   }
 
   renderSingleCallCards() {
+    if (typeof window.renderSingleCallCards === 'function') {
+      window.renderSingleCallCards();
+      return;
+    }
     const container = document.getElementById('singleCallShareContainer');
     if (!container) return;
 
-    const calls = this.getCallsData();
-    let displayCalls = calls.filter(c => c.status === 'Completed' || c.actionTaken);
-    if (displayCalls.length === 0) {
-      displayCalls = calls.slice(0, 15);
-    }
-
+    const calls = this.getCallsData() || [];
+    let displayCalls = calls;
     if (displayCalls.length === 0) {
       container.innerHTML = `<div style="text-align:center; padding: 1.5rem; color: var(--text-muted); font-size: 0.82rem;">No calls available for individual WhatsApp sharing.</div>`;
       return;
@@ -570,19 +577,19 @@ ${routeSequenceText}
               <i class="fas fa-download"></i> Save Photo
             </a>
            </div>` 
-        : `<div style="font-size: 0.71rem; color: var(--danger); margin-top: 0.4rem; background: rgba(239,68,68,0.05); padding: 0.35rem 0.55rem; border-radius: 6px; border: 1px solid rgba(239,68,68,0.2);"><i class="fas fa-exclamation-triangle"></i> School HM Signed Sheet photo missing - Attach photo in Edit Call drawer</div>`;
+        : `<div style="font-size: 0.71rem; color: var(--danger); margin-top: 0.4rem; background: rgba(239,68,68,0.05); padding: 0.35rem 0.55rem; border-radius: 6px; border: 1px solid rgba(239,68,68,0.2);"><i class="fas fa-exclamation-triangle"></i> School HM Signed Sheet photo missing</div>`;
 
       return `
         <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.95rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
-            <div style="font-weight: 800; font-size: 0.86rem; color: var(--text-primary);">${idx + 1}. ${c.schoolName}</div>
-            <span class="badge" style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); font-weight: 700;">${c.block} Block</span>
+            <div style="font-weight: 800; font-size: 0.86rem; color: var(--text-primary);">${idx + 1}. ${c.schoolName || 'School'}</div>
+            <span class="badge" style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); font-weight: 700;">${c.block || 'Nagapattinam'} Block</span>
           </div>
 
-          <textarea id="singleCallMsgText_${c.id}" class="form-control font-mono" style="font-size: 0.78rem; height: 160px; line-height: 1.4; margin-bottom: 0.5rem; background: var(--bg-main);" readonly>${msgText}</textarea>
+          <textarea id="singleCallMsgText_${c.id}" class="form-control font-mono single-call-textarea" style="font-size: 0.8rem; min-height: 180px; line-height: 1.45; margin-bottom: 0.5rem; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; -webkit-opacity: 1 !important; opacity: 1 !important; background: #f8fafc !important; border: 1.5px solid #cbd5e1; padding: 0.65rem; width: 100%; box-sizing: border-box;" readonly>${msgText}</textarea>
           
           <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button type="button" onclick="window.exporter.copySingleCallText(${c.id})" class="btn btn-sm" style="background: #25D366; color: #ffffff; border: none; font-weight: 800; font-size: 0.75rem; padding: 0.4rem 0.85rem; border-radius: 6px; box-shadow: 0 3px 8px rgba(37,211,102,0.25);">
+            <button type="button" onclick="window.copySingleCallText ? window.copySingleCallText('${c.id}') : window.exporter.copySingleCallText('${c.id}')" class="btn btn-sm" style="background: #25D366; color: #ffffff; border: none; font-weight: 800; font-size: 0.75rem; padding: 0.45rem 0.9rem; border-radius: 6px; box-shadow: 0 3px 8px rgba(37,211,102,0.25);">
               <i class="fab fa-whatsapp"></i> Copy 7-Field WhatsApp Msg
             </button>
           </div>
@@ -590,12 +597,25 @@ ${routeSequenceText}
         </div>
       `;
     }).join('');
+
+    displayCalls.forEach(c => {
+      const ta = document.getElementById('singleCallMsgText_' + c.id);
+      if (ta) {
+        const msg = this.generateSingleCallWhatsappText(c);
+        ta.value = msg;
+        ta.textContent = msg;
+      }
+    });
   }
 
   copySingleCallText(id) {
+    if (typeof window.copySingleCallText === 'function') {
+      window.copySingleCallText(id);
+      return;
+    }
     const el = document.getElementById('singleCallMsgText_' + id);
     if (el) {
-      const text = el.value;
+      const text = el.value || el.textContent || '';
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
           alert('✅ 7-Field WhatsApp message copied to clipboard!\n\nYou can now paste it into WhatsApp alongside the saved HM Signed Sheet photo.');

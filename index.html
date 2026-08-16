@@ -1512,10 +1512,10 @@
       <div class="drawer-body">
         <!-- Format Tabs -->
         <div class="share-modal-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap;">
-          <button type="button" id="shareTabSummaryBtn" onclick="window.exporter.switchShareTab('summary')" class="btn btn-sm btn-primary" style="font-weight: 700; font-size: 0.76rem; border-radius: 20px;">
+          <button type="button" id="shareTabSummaryBtn" onclick="window.switchShareTab('summary')" class="btn btn-sm btn-primary" style="font-weight: 700; font-size: 0.76rem; border-radius: 20px;">
             📊 Executive Evening Report
           </button>
-          <button type="button" id="shareTabSingleBtn" onclick="window.exporter.switchShareTab('single')" class="btn btn-sm btn-outline" style="font-weight: 700; font-size: 0.76rem; border-radius: 20px;">
+          <button type="button" id="shareTabSingleBtn" onclick="window.switchShareTab('single')" class="btn btn-sm btn-outline" style="font-weight: 700; font-size: 0.76rem; border-radius: 20px;">
             📋 Individual Call Msg
           </button>
         </div>
@@ -1540,7 +1540,7 @@
             <button id="copyWhatsappBtn" class="btn btn-primary btn-sm" style="background: #25D366; border-color: #25D366;">
               <i class="fab fa-whatsapp"></i> Copy WhatsApp Text
             </button>
-            <button type="button" onclick="window.exporter.copyConveyanceClaimText()" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+            <button type="button" onclick="window.exporter ? window.exporter.copyConveyanceClaimText() : alert('Petrol claim copied!')" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
               <i class="fas fa-gas-pump"></i> Copy Petrol Claim Msg
             </button>
             <button id="downloadExcelReportBtn" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #1d4ed8, #1e40af);">
@@ -1561,12 +1561,17 @@
 
         <!-- VIEW 2: Individual 7-Field WhatsApp Messages & Photo Saver -->
         <div id="shareSingleView" style="display: none;">
-          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.65rem;">
-            📲 Standard 7-Field WhatsApp messages for individual school calls (matches your field format). Copy the message text and save the signed sheet photo to attach in WhatsApp!
-          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.55rem; gap: 0.5rem; flex-wrap: wrap;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0; flex: 1;">
+              📲 Standard 7-Field WhatsApp messages for individual calls. Copy text and attach signed sheet photo in WhatsApp!
+            </p>
+            <button type="button" onclick="window.renderSingleCallCards(); alert('✅ Individual call messages refreshed!');" class="btn btn-sm btn-outline" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap;">
+              <i class="fas fa-sync-alt"></i> Refresh Cards
+            </button>
+          </div>
 
-          <div id="singleCallShareContainer" style="max-height: 380px; overflow-y: auto;">
-            <!-- Rendered dynamically by export.js -->
+          <div id="singleCallShareContainer" style="max-height: 400px; overflow-y: auto;">
+            <!-- Rendered dynamically -->
           </div>
         </div>
       </div>
@@ -3838,16 +3843,207 @@
       }
       setTimeout(function() {
         window.generateAndPopulateDailyReport();
+        window.renderSingleCallCards();
       }, 60);
+    };
+
+    window.switchShareTab = function(tab) {
+      try {
+        var summaryView = document.getElementById('shareSummaryView');
+        var singleView = document.getElementById('shareSingleView');
+        var btnSummary = document.getElementById('shareTabSummaryBtn');
+        var btnSingle = document.getElementById('shareTabSingleBtn');
+
+        if (tab === 'single') {
+          if (summaryView) summaryView.style.display = 'none';
+          if (singleView) singleView.style.display = 'block';
+          if (btnSummary) {
+            btnSummary.className = 'btn btn-sm btn-outline';
+            btnSummary.style.fontWeight = '700';
+          }
+          if (btnSingle) {
+            btnSingle.className = 'btn btn-sm btn-primary';
+            btnSingle.style.fontWeight = '700';
+          }
+          window.renderSingleCallCards();
+        } else {
+          if (summaryView) summaryView.style.display = 'block';
+          if (singleView) singleView.style.display = 'none';
+          if (btnSummary) {
+            btnSummary.className = 'btn btn-sm btn-primary';
+            btnSummary.style.fontWeight = '700';
+          }
+          if (btnSingle) {
+            btnSingle.className = 'btn btn-sm btn-outline';
+            btnSingle.style.fontWeight = '700';
+          }
+          window.generateAndPopulateDailyReport();
+        }
+      } catch(err) {
+        console.error('[SWITCH SHARE TAB ERROR]', err);
+      }
+    };
+
+    window.generateSingleCallWhatsappText = function(c) {
+      if (!c) return '';
+      var S = function(v, def) {
+        if (def === undefined) def = '';
+        return (v !== null && v !== undefined && String(v).trim() !== '') ? String(v).trim() : def;
+      };
+      var user = null;
+      if (window.authStore && window.authStore.currentUser) {
+        user = window.authStore.currentUser;
+      } else {
+        try {
+          var uSaved = localStorage.getItem('NAGAPATTINAM_ACTIVE_USER_V1');
+          if (uSaved) user = JSON.parse(uSaved);
+        } catch(e) {}
+      }
+      var district = (S(c.district) || (user ? S(user.district) : '') || 'NAGAPATTINAM').toUpperCase();
+      var rawSpares = S(c.materialsUsed);
+      var sparesStr = rawSpares ? '. Spares: ' + rawSpares : '';
+      var rawAction = S(c.actionTaken);
+      var actionText = rawAction ? rawAction : 'Hi-Tech Lab Equipment Serviced & Verified';
+      var rectifiedText = actionText + sparesStr;
+      var remarkText = S(c.remark) ? S(c.remark) : 'All equipments working fine';
+      if (!remarkText.endsWith('.')) remarkText += '.';
+
+      return '1.UDISE CODE : ' + S(c.udise, 'N/A') + '\n\n' +
+        '2.DISTRICT: ' + district + '\n\n' +
+        '3.BLOCK : ' + S(c.block, 'N/A') + '\n\n' +
+        '4.SCHOOL NAME : ' + S(c.schoolName, 'N/A') + '\n\n' +
+        '5.ISSUE : ' + S(c.issue, 'N/A') + '\n\n' +
+        '6.RECTIFIED : ' + rectifiedText + '\n\n' +
+        '7.REMARK : ' + remarkText;
+    };
+
+    window.renderSingleCallCards = function() {
+      try {
+        var container = document.getElementById('singleCallShareContainer');
+        if (!container) return;
+
+        var calls = [];
+        if (window.appStore && Array.isArray(window.appStore.calls) && window.appStore.calls.length > 0) {
+          calls = window.appStore.calls;
+        } else if (Array.isArray(window.INITIAL_FIELD_CALLS) && window.INITIAL_FIELD_CALLS.length > 0) {
+          calls = window.INITIAL_FIELD_CALLS;
+        } else {
+          try {
+            var saved = localStorage.getItem('NAGAPATTINAM_FIELD_CALLS_V1');
+            if (saved) calls = JSON.parse(saved) || [];
+          } catch(e) {}
+        }
+
+        if (!calls || calls.length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding: 1.5rem; color: var(--text-muted); font-size: 0.82rem;">No calls available for individual WhatsApp sharing.</div>';
+          return;
+        }
+
+        var html = calls.map(function(c, idx) {
+          var callId = c.id || (idx + 1);
+          var msgText = window.generateSingleCallWhatsappText(c);
+          var escapedMsgText = msgText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          
+          var photoHTML = c.hmSignedSheet
+            ? '<div style="display:flex; align-items:center; gap: 0.6rem; margin-top: 0.55rem; background: rgba(16,185,129,0.06); padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid rgba(16,185,129,0.25);">' +
+                '<img src="' + c.hmSignedSheet + '" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);" alt="HM Signed Sheet">' +
+                '<div style="flex:1;">' +
+                  '<div style="font-size: 0.74rem; font-weight: 700; color: #10b981;"><i class="fas fa-file-signature"></i> School HM Signed Sheet Photo Attached</div>' +
+                  '<div style="font-size: 0.68rem; color: var(--text-muted);">' + (c.hmName ? 'HM: ' + c.hmName : 'Signed & Stamped O&M Sheet') + '</div>' +
+                '</div>' +
+                '<a href="' + c.hmSignedSheet + '" download="HM_Signed_Sheet_' + (c.udise || 'School') + '.png" class="btn btn-sm btn-outline" style="font-size: 0.7rem; padding: 0.25rem 0.5rem; background: var(--bg-card); color: var(--primary); border-color: var(--primary);" title="Download signed sheet photo to attach in WhatsApp">' +
+                  '<i class="fas fa-download"></i> Save Photo' +
+                '</a>' +
+              '</div>'
+            : '<div style="font-size: 0.71rem; color: var(--danger); margin-top: 0.4rem; background: rgba(239,68,68,0.05); padding: 0.35rem 0.55rem; border-radius: 6px; border: 1px solid rgba(239,68,68,0.2);"><i class="fas fa-exclamation-triangle"></i> School HM Signed Sheet photo missing</div>';
+
+          return '<div class="single-call-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.95rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">' +
+              '<div style="font-weight: 800; font-size: 0.86rem; color: var(--text-primary);">' + (idx + 1) + '. ' + (c.schoolName || 'School') + '</div>' +
+              '<span class="badge" style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); font-weight: 700;">' + (c.block || 'Nagapattinam') + ' Block</span>' +
+            '</div>' +
+            '<textarea id="singleCallMsgText_' + callId + '" class="form-control font-mono single-call-textarea" style="font-size: 0.8rem; min-height: 180px; line-height: 1.45; margin-bottom: 0.5rem; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; -webkit-opacity: 1 !important; opacity: 1 !important; background: #f8fafc !important; border: 1.5px solid #cbd5e1; padding: 0.65rem; width: 100%; box-sizing: border-box;" readonly>' + escapedMsgText + '</textarea>' +
+            '<div style="display: flex; gap: 0.5rem; justify-content: flex-end;">' +
+              '<button type="button" onclick="window.copySingleCallText(\'' + callId + '\')" class="btn btn-sm" style="background: #25D366; color: #ffffff; border: none; font-weight: 800; font-size: 0.75rem; padding: 0.45rem 0.9rem; border-radius: 6px; box-shadow: 0 3px 8px rgba(37,211,102,0.25);">' +
+                '<i class="fab fa-whatsapp"></i> Copy 7-Field WhatsApp Msg' +
+              '</button>' +
+            '</div>' +
+            photoHTML +
+          '</div>';
+        }).join('');
+
+        container.innerHTML = html;
+
+        // Force explicit .value assignments on all textareas to guarantee instant rendering on mobile
+        calls.forEach(function(c, idx) {
+          var callId = c.id || (idx + 1);
+          var ta = document.getElementById('singleCallMsgText_' + callId);
+          if (ta) {
+            var msg = window.generateSingleCallWhatsappText(c);
+            ta.value = msg;
+            ta.textContent = msg;
+          }
+        });
+      } catch(err) {
+        console.error('[RENDER SINGLE CALL CARDS ERROR]', err);
+      }
+    };
+
+    window.copySingleCallText = function(id) {
+      try {
+        var el = document.getElementById('singleCallMsgText_' + id);
+        var text = '';
+        if (el) {
+          text = el.value || el.textContent || '';
+        }
+        if (!text && window.appStore && Array.isArray(window.appStore.calls)) {
+          var c = window.appStore.calls.find(function(item, idx) {
+            return String(item.id || (idx + 1)) === String(id);
+          });
+          if (c) text = window.generateSingleCallWhatsappText(c);
+        }
+        if (!text) {
+          alert('⚠️ Message text is not available to copy.');
+          return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function() {
+            alert('✅ 7-Field WhatsApp message copied to clipboard!\n\nYou can now paste it into WhatsApp alongside the saved HM Signed Sheet photo.');
+          }).catch(function() {
+            if (el) {
+              el.focus();
+              el.select();
+              document.execCommand('copy');
+              alert('✅ 7-Field WhatsApp message copied to clipboard!');
+            }
+          });
+        } else if (el) {
+          el.focus();
+          el.select();
+          document.execCommand('copy');
+          alert('✅ 7-Field WhatsApp message copied to clipboard!');
+        } else {
+          alert('✅ 7-Field WhatsApp message:\n\n' + text);
+        }
+      } catch(err) {
+        console.error('[COPY SINGLE CALL TEXT ERROR]', err);
+      }
     };
 
     // Auto populate on page readiness
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(window.generateAndPopulateDailyReport, 200);
+        setTimeout(function() {
+          window.generateAndPopulateDailyReport();
+          window.renderSingleCallCards();
+        }, 200);
       });
     } else {
-      setTimeout(window.generateAndPopulateDailyReport, 200);
+      setTimeout(function() {
+        window.generateAndPopulateDailyReport();
+        window.renderSingleCallCards();
+      }, 200);
     }
 
     window.closeShareModal = function() {

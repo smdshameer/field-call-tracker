@@ -249,9 +249,9 @@ html.auth-active::-webkit-scrollbar, body.auth-active::-webkit-scrollbar {
   text-decoration: none;
   transition: transform .3s cubic-bezier(.4,0,.2,1), box-shadow .3s, background-color .3s, border-color .3s;
   position: relative;
+  overflow: visible;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  user-select: text;
-  -webkit-user-select: text;
+  user-select: none;
 }
 
 .stat-card:before {

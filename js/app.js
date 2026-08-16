@@ -64,19 +64,10 @@ class AppStore {
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
     // Automatic Dataset Version Check: Clears stale old PC development caches & loads canonical 53 calls
-    const DATASET_VERSION = '2026_08_17_V3';
-    const currentVersion = localStorage.getItem('KSSMART_DATASET_VERSION');
+    const DATASET_VERSION = '2026_08_17_V4';
+    const partitionVersionKey = `KSSMART_VERSION_${partitionKey}`;
+    const partitionVersion = localStorage.getItem(partitionVersionKey);
     const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
-
-    if (currentVersion !== DATASET_VERSION && !isExplicitlyReset) {
-      console.log('[APP] Upgrading local dataset to canonical 53 calls (avg age: 149 days)...');
-      const initialData = window.INITIAL_FIELD_CALLS || [];
-      this.calls = JSON.parse(JSON.stringify(initialData));
-      localStorage.setItem('KSSMART_DATASET_VERSION', DATASET_VERSION);
-      this.enrichCalls();
-      this.saveCalls();
-      return;
-    }
 
     // 2. Load User-Specific Partition Data (Zero Data Loss Architecture)
     let loadedCalls = null;
@@ -87,38 +78,30 @@ class AppStore {
       return;
     }
 
-    const userSpecificCalls = localStorage.getItem(partitionKey);
-
-    if (userSpecificCalls !== null && userSpecificCalls.trim() !== '') {
-      try {
-        const parsed = JSON.parse(userSpecificCalls);
-        if (Array.isArray(parsed)) {
-          loadedCalls = parsed;
-        }
-      } catch (e) {
-        console.error('Error loading user partition calls:', e);
-      }
-    }
-
-    // If this partition doesn't exist yet, check master legacy storage
-    if (loadedCalls === null) {
-      const legacyCalls = localStorage.getItem(STORAGE_KEY);
-      if (legacyCalls !== null && legacyCalls.trim() !== '') {
+    if (partitionVersion === DATASET_VERSION) {
+      const userSpecificCalls = localStorage.getItem(partitionKey);
+      if (userSpecificCalls !== null && userSpecificCalls.trim() !== '') {
         try {
-          const parsed = JSON.parse(legacyCalls);
-          if (Array.isArray(parsed)) {
+          const parsed = JSON.parse(userSpecificCalls);
+          if (Array.isArray(parsed) && parsed.length > 0) {
             loadedCalls = parsed;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error('Error loading user partition calls:', e);
+        }
       }
     }
 
-    // Fallback to baseline calls
+    // Fallback to canonical baseline calls (53 calls with 149 days avg age)
     if (loadedCalls !== null) {
       this.calls = loadedCalls;
     } else {
+      console.log(`[APP] Initializing partition ${partitionKey} with canonical 53 calls (avg age: 149 days)...`);
       const initialData = window.INITIAL_FIELD_CALLS || [];
       this.calls = JSON.parse(JSON.stringify(initialData));
+      try {
+        localStorage.setItem(partitionVersionKey, DATASET_VERSION);
+      } catch(e) {}
     }
 
     // Auto-enrich calls with district, block, and IP Address if missing
@@ -344,6 +327,9 @@ class AppStore {
   switchUser(user) {
     this.loadUserData();
     this.notify();
+    if (typeof window.updateGlobalKpiCards === 'function') {
+      window.updateGlobalKpiCards(this.calls, this.settings);
+    }
   }
 
   saveCalls() {

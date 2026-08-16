@@ -111,28 +111,6 @@ class FieldCallExporter {
     }
   }
 
-  switchShareTab(tabName) {
-    const summaryView = document.getElementById('shareSummaryView');
-    const singleView = document.getElementById('shareSingleView');
-
-    const summaryBtn = document.getElementById('shareTabSummaryBtn');
-    const singleBtn = document.getElementById('shareTabSingleBtn');
-
-    if (summaryView) summaryView.style.display = tabName === 'summary' ? 'block' : 'none';
-    if (singleView) singleView.style.display = tabName === 'single' ? 'block' : 'none';
-
-    if (summaryBtn) {
-      summaryBtn.className = tabName === 'summary' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
-    }
-    if (singleBtn) {
-      singleBtn.className = tabName === 'single' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
-    }
-
-    if (tabName === 'single') {
-      this.renderSingleCallCards();
-    }
-  }
-
   bindCustomReportFilters() {
     ['reportFilterEngineer', 'reportFilterDistrict', 'reportFilterBlock', 'reportFilterCategory', 'reportFilterUdise'].forEach(id => {
       const el = document.getElementById(id);
@@ -289,30 +267,36 @@ class FieldCallExporter {
   }
 
   generateDailyReportText() {
-    const calls = this.getCallsData();
+    const S = (v, def = '') => (v !== null && v !== undefined) ? String(v).trim() : def;
+    const N = (v, def = 0) => {
+      const parsed = parseFloat(v);
+      return isNaN(parsed) ? def : parsed;
+    };
+
+    const calls = this.getCallsData() || [];
     const todayFormatted = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
     const user = window.authStore ? window.authStore.currentUser : null;
-    const engineerName = user ? user.name : 'Mohamad Shameer';
-    const engineerEmpId = user ? user.empId : '569';
-    const engineerEmail = user ? user.email : 'mohamadshameer@kssmart.co';
-    const engineerDistrict = user ? user.district : 'Nagapattinam';
+    const engineerName = user ? S(user.name, 'Mohamad Shameer') : 'Mohamad Shameer';
+    const engineerEmpId = user ? S(user.empId, '569') : '569';
+    const engineerEmail = user ? S(user.email, 'mohamadshameer@kssmart.co') : 'mohamadshameer@kssmart.co';
+    const engineerDistrict = user ? S(user.district, 'Nagapattinam') : 'Nagapattinam';
 
     const total = calls.length;
-    const completed = calls.filter(c => c.status === 'Completed');
-    const inProgress = calls.filter(c => c.status === 'In Progress');
-    const notStarted = calls.filter(c => c.status === 'Not Started');
-    const incomplete = calls.filter(c => c.status === 'Incomplete');
+    const completed = calls.filter(c => S(c.status) === 'Completed');
+    const inProgress = calls.filter(c => S(c.status) === 'In Progress');
+    const notStarted = calls.filter(c => S(c.status) === 'Not Started' || !c.status);
+    const incomplete = calls.filter(c => S(c.status) === 'Incomplete');
 
-    const totalDistance = calls.reduce((sum, c) => sum + (parseFloat(c.distanceKm) || 0), 0);
-    const totalConveyance = calls.reduce((sum, c) => sum + (parseFloat(c.conveyanceCost) || 0), 0);
-    const totalOwnCash = calls.reduce((sum, c) => sum + (parseFloat(c.ownCashSpent) || 0), 0);
+    const totalDistance = calls.reduce((sum, c) => sum + N(c.distanceKm), 0);
+    const totalConveyance = calls.reduce((sum, c) => sum + N(c.conveyanceCost), 0);
+    const totalOwnCash = calls.reduce((sum, c) => sum + N(c.ownCashSpent), 0);
 
     // Block Breakdown
     const blocks = ['Nagapattinam', 'Kelvelur', 'Thirumarugal', 'Vedaranyam', 'Thalainayar', 'Keezhaiyur'];
     let blockSummary = '';
     blocks.forEach(b => {
-      const bCalls = calls.filter(c => c.block === b);
-      const bComp = bCalls.filter(c => c.status === 'Completed').length;
+      const bCalls = calls.filter(c => S(c.block) === b);
+      const bComp = bCalls.filter(c => S(c.status) === 'Completed').length;
       blockSummary += `  • *${b}:* ${bComp}/${bCalls.length} Completed\n`;
     });
 
@@ -321,61 +305,67 @@ class FieldCallExporter {
     let hmSignedCount = 0;
     if (completed.length > 0) {
       completedLogText = completed.map((c, idx) => {
-        const spares = (c.materialsUsed && c.materialsUsed.trim()) ? c.materialsUsed.trim() : 'None';
-        const cashSpentVal = parseFloat(c.ownCashSpent);
-        const reasonStr = (c.ownCashReason && c.ownCashReason.trim()) ? ` *(For: ${c.ownCashReason.trim()})*` : '';
-        const cashSpent = (!isNaN(cashSpentVal) && cashSpentVal > 0) ? `*₹${cashSpentVal.toLocaleString('en-IN')}*${reasonStr}` : '₹0 (No cash spent)';
-        const action = (c.actionTaken && c.actionTaken.trim()) ? c.actionTaken.trim() : 'Hi-Tech Lab Equipment Serviced & Verified';
-        const categoryStr = (c.category && c.category.trim()) ? c.category.trim() : 'HELPLINE TICKET';
+        const rawMaterials = S(c.materialsUsed);
+        const spares = rawMaterials ? rawMaterials : 'None';
+        const cashSpentVal = N(c.ownCashSpent);
+        const rawReason = S(c.ownCashReason);
+        const reasonStr = rawReason ? ` *(For: ${rawReason})*` : '';
+        const cashSpent = cashSpentVal > 0 ? `*₹${cashSpentVal.toLocaleString('en-IN')}*${reasonStr}` : '₹0 (No cash spent)';
+        const rawAction = S(c.actionTaken);
+        const action = rawAction ? rawAction : 'Hi-Tech Lab Equipment Serviced & Verified';
+        const rawCat = S(c.category);
+        const categoryStr = rawCat ? rawCat : 'HELPLINE TICKET';
         
         const hmSignedStr = c.hmSignedSheet ? 'Attached ✅' : 'Pending ⚠️';
         if (c.hmSignedSheet) hmSignedCount++;
 
-        const hmNameStr = c.hmName ? ` (HM: ${c.hmName})` : '';
-        const remarkStr = (c.remark && c.remark.trim()) ? c.remark.trim() : 'All equipments working fine';
-        const distVal = (c.distanceKm !== null && c.distanceKm !== undefined && !isNaN(parseFloat(c.distanceKm))) ? `${c.distanceKm} km` : '0 km';
+        const hmNameStr = S(c.hmName) ? ` (HM: ${S(c.hmName)})` : '';
+        const rawRemark = S(c.remark);
+        const remarkStr = rawRemark ? rawRemark : 'All equipments working fine';
+        const distVal = (c.distanceKm !== null && c.distanceKm !== undefined && !isNaN(N(c.distanceKm))) ? `${c.distanceKm} km` : '0 km';
 
-        return `${idx + 1}. *${c.schoolName}* (*${c.block} Block* | *${categoryStr}*)
-   • *UDISE Code:* ${c.udise || 'N/A'}
-   • *Issue Reported:* ${c.issue || 'N/A'}
+        return `${idx + 1}. *${S(c.schoolName, 'School')}* (*${S(c.block, 'Nagapattinam')} Block* | *${categoryStr}*)
+   • *UDISE Code:* ${S(c.udise, 'N/A')}
+   • *Issue Reported:* ${S(c.issue, 'N/A')}
    • *Action Taken to Rectify:* ${action}
    • *Spares Replaced:* ${spares}
    • *Own Cash Spent for Spares:* ${cashSpent}
    • *Remark:* ${remarkStr}
    • *School HM Signed Sheet:* ${hmSignedStr}${hmNameStr}
    • *Inter-School Distance:* ${distVal}
-   • *Field Engineer:* ${c.visitedBy || engineerName} | *Date Closed:* ${c.dateClosed || 'N/A'}`;
+   • *Field Engineer:* ${S(c.visitedBy, engineerName)} | *Date Closed:* ${S(c.dateClosed, 'N/A')}`;
       }).join('\n\n');
     } else {
       completedLogText = '  - No completed calls logged yet today.';
     }
 
-    const companyName = user ? (user.companyName || 'KS SMART SOLUTIONS') : 'KS SMART SOLUTIONS';
-    const projectName = user ? (user.projectName || 'TAMIL NADU SCHOOL PROJECT') : 'TAMIL NADU SCHOOL PROJECT';
-    const transportMode = user ? (user.vehicleType || 'Own Bike') : 'Own Bike';
-    const conveyanceRate = user ? (user.conveyanceRate || 5) : 5;
-    const dailyTargetGoal = user ? (user.dailyTargetGoal || 3) : 3;
-    const vehicleNoStr = user && user.vehicleNo ? ` (${user.vehicleNo})` : '';
+    const companyName = user ? S(user.companyName, 'KS SMART SOLUTIONS') : 'KS SMART SOLUTIONS';
+    const projectName = user ? S(user.projectName, 'TAMIL NADU SCHOOL PROJECT') : 'TAMIL NADU SCHOOL PROJECT';
+    const transportMode = user ? S(user.vehicleType, 'Own Bike') : 'Own Bike';
+    const conveyanceRate = user ? N(user.conveyanceRate, 5) : 5;
+    const dailyTargetGoal = user ? N(user.dailyTargetGoal, 3) : 3;
+    const vehicleNoStr = (user && S(user.vehicleNo)) ? ` (${S(user.vehicleNo)})` : '';
 
-    const homeLocation = user ? (user.homeBaseLocation || `${engineerDistrict}, Tamil Nadu 611001`) : `${engineerDistrict}, Tamil Nadu 611001`;
+    const homeLocation = user ? S(user.homeBaseLocation, `${engineerDistrict}, Tamil Nadu 611001`) : `${engineerDistrict}, Tamil Nadu 611001`;
     const targetStatusStr = completed.length >= dailyTargetGoal 
       ? `*${completed.length} / ${dailyTargetGoal} Calls Completed (100% Target Met)* ✅` 
       : `*${completed.length} / ${dailyTargetGoal} Calls Completed (${dailyTargetGoal - completed.length} remaining to reach target)* ⚠️`;
 
     // Escalations & Blockers Block for Management / Vendor Action
-    const escalatedCalls = calls.filter(c => (c.escalationFlag && c.escalationFlag !== 'NONE') || (c.missingMaterials && c.missingMaterials.trim()));
+    const escalatedCalls = calls.filter(c => (S(c.escalationFlag) && S(c.escalationFlag) !== 'NONE') || S(c.missingMaterials));
     let escalationBlock = '';
     if (escalatedCalls.length > 0) {
       escalationBlock = `\n\n============================================\n*🚨 ESCALATIONS & ACTIONS REQUIRED FROM MANAGEMENT / VENDOR (${escalatedCalls.length}):*\n--------------------------------------------\n` + 
       escalatedCalls.map((c, i) => {
         let flagLabel = 'Action Required';
-        if (c.escalationFlag === 'INSTALLATION_PENDING') flagLabel = '📦 Requires Installation Team Action (UPS/Wiring Pending)';
-        else if (c.escalationFlag === 'MATERIAL_REQUIRED') flagLabel = '🛒 Material / Spares Needed from Vendor';
-        else if (c.escalationFlag === 'VENDOR_REPLACEMENT') flagLabel = '⚠️ Vendor Replacement Required';
-        else if (c.escalationFlag === 'ADDITIONAL_ISSUE') flagLabel = '🔍 Additional On-Site Issues Reported';
-        else if (c.missingMaterials && c.missingMaterials.trim()) flagLabel = '🛒 Material / Spares Needed';
+        const flag = S(c.escalationFlag);
+        if (flag === 'INSTALLATION_PENDING') flagLabel = '📦 Requires Installation Team Action (UPS/Wiring Pending)';
+        else if (flag === 'MATERIAL_REQUIRED') flagLabel = '🛒 Material / Spares Needed from Vendor';
+        else if (flag === 'VENDOR_REPLACEMENT') flagLabel = '⚠️ Vendor Replacement Required';
+        else if (flag === 'ADDITIONAL_ISSUE') flagLabel = '🔍 Additional On-Site Issues Reported';
+        else if (S(c.missingMaterials)) flagLabel = '🛒 Material / Spares Needed';
         
-        return `${i + 1}. *${c.schoolName}* (UDISE: ${c.udise || 'N/A'})\n   • *Issue Reported:* ${c.issue || 'N/A'}\n   • *Escalation Type:* ${flagLabel}\n   • *Details / Missing Items:* ${c.missingMaterials || c.reasonIncomplete || c.actionTaken || 'Awaiting vendor/team support'}`;
+        return `${i + 1}. *${S(c.schoolName, 'School')}* (UDISE: ${S(c.udise, 'N/A')})\n   • *Issue Reported:* ${S(c.issue, 'N/A')}\n   • *Escalation Type:* ${flagLabel}\n   • *Details / Missing Items:* ${S(c.missingMaterials) || S(c.reasonIncomplete) || S(c.actionTaken) || 'Awaiting vendor/team support'}`;
       }).join('\n\n');
     }
 
@@ -513,15 +503,18 @@ ${routeSequenceText}
 
   generateSingleCallWhatsappText(c) {
     if (!c) return '';
+    const S = (v, def = '') => (v !== null && v !== undefined) ? String(v).trim() : def;
     const user = window.authStore ? window.authStore.currentUser : null;
-    const district = (c.district || (user ? user.district : '') || 'NAGAPATTINAM').toUpperCase();
-    const sparesStr = (c.materialsUsed && c.materialsUsed.trim()) ? `. Spares: ${c.materialsUsed.trim()}` : '';
-    const actionText = (c.actionTaken && c.actionTaken.trim()) ? c.actionTaken.trim() : 'Hi-Tech Lab Equipment Serviced & Verified';
+    const district = (S(c.district) || (user ? S(user.district) : '') || 'NAGAPATTINAM').toUpperCase();
+    const rawSpares = S(c.materialsUsed);
+    const sparesStr = rawSpares ? `. Spares: ${rawSpares}` : '';
+    const rawAction = S(c.actionTaken);
+    const actionText = rawAction ? rawAction : 'Hi-Tech Lab Equipment Serviced & Verified';
     const rectifiedText = `${actionText}${sparesStr}`;
-    let remarkText = (c.remark && c.remark.trim()) ? c.remark.trim() : 'All equipments working fine';
+    let remarkText = S(c.remark) ? S(c.remark) : 'All equipments working fine';
     if (!remarkText.endsWith('.')) remarkText += '.';
 
-    return `1.UDISE CODE : ${c.udise || 'N/A'}
+    return `1.UDISE CODE : ${S(c.udise, 'N/A')}
 
 2.DISTRICT: ${district}
 

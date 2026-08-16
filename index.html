@@ -2532,14 +2532,7 @@
         if (s1) s1.style.display = 'block';
         if (s2) s2.style.display = 'none';
         if (title) title.textContent = 'Reset Your Password';
-        if (sub) sub.textContent = 'Verify your mobile phone or company email with a 6-digit OTP code.';
-      };
-
-      window.updateOtpPlaceholder = function(channel) {
-        var label = document.getElementById('fbResetContactLabel');
-          if (label) label.innerHTML = '<i class="fas fa-mobile-screen" style="color: #1877f2;"></i> Registered Mobile Phone Number *';
-          if (input) input.placeholder = 'e.g. 9042489993';
-        }
+        if (sub) sub.textContent = 'Enter your Employee ID, Mobile Number, or Email to continue.';
       };
 
       window.handleRequestOtp = function(e) {

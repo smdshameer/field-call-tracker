@@ -63,9 +63,23 @@ class AppStore {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
+    // Automatic Dataset Version Check: Clears stale old PC development caches & loads canonical 53 calls
+    const DATASET_VERSION = '2026_08_17_V3';
+    const currentVersion = localStorage.getItem('KSSMART_DATASET_VERSION');
+    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
+
+    if (currentVersion !== DATASET_VERSION && !isExplicitlyReset) {
+      console.log('[APP] Upgrading local dataset to canonical 53 calls (avg age: 149 days)...');
+      const initialData = window.INITIAL_FIELD_CALLS || [];
+      this.calls = JSON.parse(JSON.stringify(initialData));
+      localStorage.setItem('KSSMART_DATASET_VERSION', DATASET_VERSION);
+      this.enrichCalls();
+      this.saveCalls();
+      return;
+    }
+
     // 2. Load User-Specific Partition Data (Zero Data Loss Architecture)
     let loadedCalls = null;
-    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
 
     if (isExplicitlyReset) {
       this.calls = [];

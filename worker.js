@@ -33,16 +33,16 @@ export default {
         const recipientName = body.name || "Mohamed Shameer";
         const otpCode = body.otp || Math.floor(100000 + Math.random() * 900000).toString();
 
-        const emailHtml = 
+        const emailHtml = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #dadde1;border-radius:12px;padding:30px;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
             <div style="font-size:22px;font-weight:800;color:#1877f2;margin-bottom:18px;">KS Smart Solutions</div>
             <h2 style="color:#0f172a;margin-top:0;font-size:19px;font-weight:800;">Password Reset Verification Code</h2>
-            <p style="color:#475569;font-size:14px;line-height:1.5;">Hello <strong>\</strong>,</p>
+            <p style="color:#475569;font-size:14px;line-height:1.5;">Hello <strong>${recipientName}</strong>,</p>
             <p style="color:#475569;font-size:14px;line-height:1.5;">We received a request to reset your password for the <strong>Tamil Nadu School Project Field Portal</strong>.</p>
             
             <div style="background:#ecfdf5;border:2px solid #10b981;border-radius:10px;padding:20px;text-align:center;margin:24px 0;">
               <div style="font-size:12px;font-weight:700;color:#047857;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Your 6-Digit Security Code</div>
-              <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#065f46;font-family:monospace;">\</div>
+              <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#065f46;font-family:monospace;">${otpCode}</div>
               <div style="font-size:11.5px;color:#059669;margin-top:6px;font-weight:600;">Valid for 10 minutes</div>
             </div>
             
@@ -52,7 +52,7 @@ export default {
               <strong>Tamil Nadu School Education Project</strong> &bull; KS Smart Solutions &bull; Nagapattinam District
             </div>
           </div>
-        ;
+        `;
 
         // Direct Server-to-Server dispatch to Resend API (No CORS / No Browser blocks)
         const resendRes = await fetch("https://api.resend.com/emails", {

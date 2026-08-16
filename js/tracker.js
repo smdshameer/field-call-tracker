@@ -58,12 +58,14 @@ class FieldCallTracker {
   }
 
   setupEventListeners() {
-    // Search Input
+    // Search Input (Multi-event live listener)
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value.toLowerCase().trim();
-        this.render();
+      ['input', 'keyup', 'change', 'paste', 'search'].forEach(evt => {
+        searchInput.addEventListener(evt, (e) => {
+          this.searchQuery = (e.target.value || '').toLowerCase().trim();
+          this.render();
+        });
       });
     }
 
@@ -636,41 +638,63 @@ class FieldCallTracker {
   }
 
   getFilteredAndSortedCalls() {
-    let list = [...window.appStore.calls];
+    const rawCalls = (window.appStore && Array.isArray(window.appStore.calls) && window.appStore.calls.length > 0) 
+      ? window.appStore.calls 
+      : (window.INITIAL_FIELD_CALLS || []);
 
-    // Search Filter
-    if (this.searchQuery) {
-      list = list.filter(c => 
-        (c.schoolName && c.schoolName.toLowerCase().includes(this.searchQuery)) ||
-        (c.udise && c.udise.toLowerCase().includes(this.searchQuery)) ||
-        (c.issue && c.issue.toLowerCase().includes(this.searchQuery)) ||
-        (c.contactNo && c.contactNo.toLowerCase().includes(this.searchQuery)) ||
-        (c.visitedBy && c.visitedBy.toLowerCase().includes(this.searchQuery))
-      );
+    let list = [...rawCalls];
+
+    // Search Filter - reads both live input value and cached searchQuery
+    const searchInput = document.getElementById('searchInput');
+    const q = ((searchInput ? searchInput.value : '') || this.searchQuery || '').toLowerCase().trim();
+
+    if (q) {
+      list = list.filter(c => {
+        const u = String(c.udise || '').toLowerCase();
+        const s = String(c.schoolName || '').toLowerCase();
+        const i = String(c.issue || '').toLowerCase();
+        const b = String(c.block || '').toLowerCase();
+        const d = String(c.district || '').toLowerCase();
+        const cn = String(c.contactNo || '').toLowerCase();
+        const v = String(c.visitedBy || '').toLowerCase();
+        const cat = String(c.category || '').toLowerCase();
+        const idStr = String(c.id || '');
+
+        return u.includes(q) || 
+               s.includes(q) || 
+               i.includes(q) || 
+               b.includes(q) || 
+               d.includes(q) || 
+               cn.includes(q) || 
+               v.includes(q) || 
+               cat.includes(q) ||
+               idStr === q ||
+               ('#' + idStr) === q;
+      });
     }
 
     // Select Filters
     // District Filter (Statewide vs Specific District)
     if (this.filterDistrict && this.filterDistrict !== 'ALL') {
-      list = list.filter(c => (c.district && c.district.toLowerCase() === this.filterDistrict.toLowerCase()) || (!c.district && this.filterDistrict === 'Nagapattinam'));
+      list = list.filter(c => String(c.district || 'Nagapattinam').toLowerCase() === this.filterDistrict.toLowerCase());
     }
 
-    if (this.filterBlock !== 'ALL') {
-      list = list.filter(c => c.block === this.filterBlock);
+    if (this.filterBlock && this.filterBlock !== 'ALL') {
+      list = list.filter(c => String(c.block || '').trim().toLowerCase() === this.filterBlock.trim().toLowerCase());
     }
-    if (this.filterStatus !== 'ALL') {
+    if (this.filterStatus && this.filterStatus !== 'ALL') {
       if (this.filterStatus === 'TODAY') {
         const todayStr = new Date().toISOString().split('T')[0];
         list = list.filter(c => c.ticketRaisedOn === todayStr || c.category === 'CCC PORTAL COMPLAINT');
       } else {
-        list = list.filter(c => c.status === this.filterStatus);
+        list = list.filter(c => String(c.status || '').trim().toLowerCase() === this.filterStatus.trim().toLowerCase());
       }
     }
-    if (this.filterCategory !== 'ALL') {
-      list = list.filter(c => c.category === this.filterCategory);
+    if (this.filterCategory && this.filterCategory !== 'ALL') {
+      list = list.filter(c => String(c.category || '').trim().toUpperCase() === this.filterCategory.trim().toUpperCase());
     }
-    if (this.filterZone !== 'ALL') {
-      list = list.filter(c => c.zone611001 === this.filterZone);
+    if (this.filterZone && this.filterZone !== 'ALL') {
+      list = list.filter(c => String(c.zone611001 || '').trim().toUpperCase() === this.filterZone.trim().toUpperCase());
     }
 
     // Sorting
@@ -678,15 +702,14 @@ class FieldCallTracker {
       let valA = a[this.sortColumn];
       let valB = b[this.sortColumn];
 
-      if (valA === null || valA === undefined) valA = '';
-      if (valB === null || valB === undefined) valB = '';
-
-      if (typeof valA === 'number' && typeof valB === 'number') {
+      if (this.sortColumn === 'id' || this.sortColumn === 'ageDays' || this.sortColumn === 'distanceKm' || this.sortColumn === 'conveyanceCost') {
+        valA = parseFloat(valA) || 0;
+        valB = parseFloat(valB) || 0;
         return this.sortDirection === 'asc' ? valA - valB : valB - valA;
       }
 
-      const strA = String(valA).toLowerCase();
-      const strB = String(valB).toLowerCase();
+      const strA = String(valA || '').toLowerCase();
+      const strB = String(valB || '').toLowerCase();
       if (strA < strB) return this.sortDirection === 'asc' ? -1 : 1;
       if (strA > strB) return this.sortDirection === 'asc' ? 1 : -1;
       return 0;
@@ -1170,6 +1193,10 @@ class FieldCallTracker {
   }
 
   render() {
+    this.tableBody = document.getElementById('tableBody');
+    if (!this.tableBody) {
+      this.tableBody = document.querySelector('tbody#tableBody') || document.querySelector('.data-table tbody');
+    }
     if (!this.tableBody) return;
 
     // Sync User Role Header UI

@@ -4498,6 +4498,51 @@
       ['input', 'change', 'keyup', 'paste'].forEach(function(evt) {
         document.addEventListener(evt, _handleLiveConveyanceCalc, true);
       });
+
+      // High-Priority Global Live Search Listener (Mobile & Desktop)
+      function _handleGlobalSearchInput(e) {
+        var t = e.target;
+        if (!t || t.id !== 'searchInput') return;
+        var q = (t.value || '').toLowerCase().trim();
+        if (window.tracker) {
+          window.tracker.searchQuery = q;
+          if (typeof window.tracker.render === 'function') {
+            window.tracker.render();
+          }
+        }
+      }
+
+      ['input', 'keyup', 'change', 'paste', 'search'].forEach(function(evt) {
+        document.addEventListener(evt, _handleGlobalSearchInput, true);
+      });
+
+      // Instant & Delayed Full Dashboard KPI & Table Refresh
+      function _triggerUnifiedRefresh() {
+        if (typeof window.refreshAllDashboardUI === 'function') {
+          window.refreshAllDashboardUI();
+        } else {
+          var calls = (window.appStore && Array.isArray(window.appStore.calls)) ? window.appStore.calls : (window.INITIAL_FIELD_CALLS || []);
+          var settings = (window.appStore && window.appStore.settings) ? window.appStore.settings : {};
+          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
+            window.dashboard.updateDashboard(calls, settings);
+          }
+          if (window.tracker && typeof window.tracker.render === 'function') {
+            window.tracker.render();
+          }
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          _triggerUnifiedRefresh();
+          setTimeout(_triggerUnifiedRefresh, 300);
+          setTimeout(_triggerUnifiedRefresh, 1000);
+        });
+      } else {
+        _triggerUnifiedRefresh();
+        setTimeout(_triggerUnifiedRefresh, 300);
+        setTimeout(_triggerUnifiedRefresh, 1000);
+      }
     })();
   </script>
 

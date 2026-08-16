@@ -557,15 +557,15 @@
       <div id="fbResetStep2Container" style="display: none; padding: 22px 24px;">
         
         <!-- Live Verified Challenge Badge -->
-        <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;">
+        <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;">
           <div style="font-size: 13px; font-weight: 800; color: #065f46; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
             <span style="display: flex; align-items: center; gap: 6px;">
               <i class="fas fa-shield-check" style="color: #10b981;"></i> Identity Confirmed: <span id="fbOtpRecipientName">Mohamed Shameer</span>
             </span>
             <span id="fbOtpDistrictBadge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">Nagapattinam</span>
           </div>
-          <div style="font-size: 12px; color: #047857; line-height: 1.4;">
-            Security verification code dispatched for <strong id="fbOtpRecipientContact">904248****</strong>. Valid for 10 minutes.
+          <div style="font-size: 12.5px; color: #047857; line-height: 1.45;">
+            <i class="fas fa-envelope-circle-check" style="color: #10b981;"></i> 6-digit security OTP code dispatched to your registered email: <strong id="fbOtpRecipientContact">smssiddiq2011@gmail.com</strong>.
           </div>
         </div>
 
@@ -2687,15 +2687,25 @@
         var contactEl = document.getElementById('fbOtpRecipientContact');
         var otpInput = document.getElementById('fbResetEnteredOtp');
 
-        var maskedPhone = qPhone.substring(0, 2) + '******' + qPhone.substring(qPhone.length - 2);
+        var maskedEmail = cleanEmail;
+        if (cleanEmail.includes('@')) {
+          var parts = cleanEmail.split('@');
+          var userPart = parts[0];
+          var domainPart = parts[1];
+          if (userPart.length > 3) {
+            maskedEmail = userPart.substring(0, 3) + '****@' + domainPart;
+          } else {
+            maskedEmail = userPart.substring(0, 1) + '***@' + domainPart;
+          }
+        }
 
         if (s1) s1.style.display = 'none';
         if (s2) s2.style.display = 'block';
         if (title) title.textContent = 'Enter Verification Code';
-        if (sub) sub.textContent = 'Enter the 6-digit security code to reset your password.';
+        if (sub) sub.textContent = 'Enter the 6-digit security code sent to your email.';
         if (nameEl) nameEl.textContent = matchedUser.name || 'Field Engineer';
         if (distEl) distEl.textContent = matchedUser.district || qDist;
-        if (contactEl) contactEl.textContent = maskedPhone;
+        if (contactEl) contactEl.textContent = maskedEmail;
 
         if (otpInput) {
           otpInput.value = '';

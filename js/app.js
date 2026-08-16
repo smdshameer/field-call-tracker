@@ -43,6 +43,7 @@ class AppStore {
 
   init() {
     this.loadUserData();
+    this.setupCloudSync();
   }
 
   loadUserData() {
@@ -114,6 +115,178 @@ class AppStore {
 
     // Persist to user partition
     this.saveCalls();
+  }
+
+  setupCloudSync() {
+    // 1. BroadcastChannel for instant cross-tab / cross-window sync
+    if ('BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('kssmart_field_sync');
+        this.broadcastChannel.onmessage = (msg) => {
+          if (msg.data && msg.data.type === 'CALLS_MUTATED') {
+            this.fetchCloudCalls(false);
+          }
+        };
+      } catch (e) {}
+    }
+
+    // 2. Refresh on window focus and tab visibility change
+    window.addEventListener('focus', () => this.fetchCloudCalls(false));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.fetchCloudCalls(false);
+      }
+    });
+
+    // 3. Regular background cloud sync heartbeat (every 5 seconds)
+    if (this._cloudSyncInterval) clearInterval(this._cloudSyncInterval);
+    this._cloudSyncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        this.fetchCloudCalls(false);
+      }
+    }, 5000);
+
+    // 4. Initial cloud pull
+    setTimeout(() => this.fetchCloudCalls(false), 300);
+  }
+
+  async fetchCloudCalls(force = false) {
+    if (this._isSyncingCloud) return;
+    this._isSyncingCloud = true;
+    this.updateCloudSyncBadge('syncing');
+
+    try {
+      const res = await fetch('/api/calls?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.calls) && data.calls.length > 0) {
+          let hasChanges = false;
+          
+          if (this.calls.length === 0 || force) {
+            this.calls = data.calls;
+            hasChanges = true;
+          } else {
+            const serverMap = new Map();
+            data.calls.forEach(sc => serverMap.set(String(sc.id), sc));
+
+            this.calls.forEach((localCall, idx) => {
+              const sc = serverMap.get(String(localCall.id));
+              if (sc) {
+                const distDiff = String(sc.distanceKm || '') !== String(localCall.distanceKm || '');
+                const statusDiff = String(sc.status || '').toLowerCase() !== String(localCall.status || '').toLowerCase();
+                const costDiff = String(sc.conveyanceCost || '') !== String(localCall.conveyanceCost || '');
+                const actionDiff = String(sc.actionTaken || '') !== String(localCall.actionTaken || '');
+                const closedDiff = String(sc.dateClosed || '') !== String(localCall.dateClosed || '');
+                const visitedDiff = String(sc.visitedBy || '') !== String(localCall.visitedBy || '');
+
+                if (distDiff || statusDiff || costDiff || actionDiff || closedDiff || visitedDiff) {
+                  this.calls[idx] = { ...localCall, ...sc };
+                  hasChanges = true;
+                }
+                serverMap.delete(String(localCall.id));
+              }
+            });
+
+            // Append any newly created calls from other devices
+            serverMap.forEach(newSc => {
+              this.calls.push(newSc);
+              hasChanges = true;
+            });
+          }
+
+          if (hasChanges) {
+            this.enrichCalls();
+            const partitionKey = this.getUserPartitionKey();
+            const dataStr = JSON.stringify(this.calls);
+            localStorage.setItem(partitionKey, dataStr);
+            localStorage.setItem(STORAGE_KEY, dataStr);
+            this.notify();
+          }
+
+          this.updateCloudSyncBadge('synced');
+        } else {
+          // Cloud has no calls yet - push local calls to initialize cloud!
+          if (this.calls && this.calls.length > 0) {
+            this.pushToCloud();
+          } else {
+            this.updateCloudSyncBadge('synced');
+          }
+        }
+      } else {
+        this.updateCloudSyncBadge('offline');
+      }
+    } catch (e) {
+      console.warn('[CLOUD SYNC] Background fetch notice:', e.message);
+      this.updateCloudSyncBadge('offline');
+    } finally {
+      this._isSyncingCloud = false;
+    }
+  }
+
+  async pushToCloud() {
+    this.updateCloudSyncBadge('syncing');
+    try {
+      const payload = {
+        calls: this.calls,
+        timestamp: Date.now(),
+        user: (window.authStore && window.authStore.currentUser) ? window.authStore.currentUser.name : 'Unknown'
+      };
+      const res = await fetch('/api/calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        this.updateCloudSyncBadge('synced');
+        if (this.broadcastChannel) {
+          this.broadcastChannel.postMessage({ type: 'CALLS_MUTATED', timestamp: Date.now() });
+        }
+      } else {
+        this.updateCloudSyncBadge('offline');
+      }
+    } catch (e) {
+      console.warn('[CLOUD SYNC] Push deferred:', e.message);
+      this.updateCloudSyncBadge('offline');
+    }
+  }
+
+  updateCloudSyncBadge(status) {
+    const badge = document.getElementById('cloudSyncStatusBadge');
+    const text = document.getElementById('cloudSyncText');
+    if (!badge || !text) return;
+
+    if (status === 'syncing') {
+      badge.style.color = '#3b82f6';
+      badge.style.background = 'rgba(59, 130, 246, 0.1)';
+      badge.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+      text.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    } else if (status === 'synced') {
+      badge.style.color = '#10b981';
+      badge.style.background = 'rgba(16, 185, 129, 0.1)';
+      badge.style.borderColor = 'rgba(16, 185, 129, 0.25)';
+      text.innerHTML = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;margin-right:4px;"></span>Cloud Synced';
+    } else {
+      badge.style.color = '#f59e0b';
+      badge.style.background = 'rgba(245, 158, 11, 0.1)';
+      badge.style.borderColor = 'rgba(245, 158, 11, 0.25)';
+      text.innerHTML = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:4px;"></span>Local Saved';
+    }
+  }
+
+  saveCalls() {
+    const partitionKey = this.getUserPartitionKey();
+    const dataStr = JSON.stringify(this.calls);
+
+    try {
+      localStorage.setItem(partitionKey, dataStr);
+      localStorage.setItem(STORAGE_KEY, dataStr);
+      this.createAutoBackup();
+    } catch (e) {
+      console.warn('LocalStorage save warning:', e);
+    }
+
+    this.notify();
+    this.pushToCloud();
   }
 
   enrichCalls() {

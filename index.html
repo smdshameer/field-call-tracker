@@ -792,7 +792,11 @@
       </div>
 
       <!-- Active User Profile Badge & Logout -->
-      <div id="userProfileBar" style="display: flex; align-items: center; gap: 0.5rem;">
+      <div id="userProfileBar" style="display: flex; align-items: center; gap: 0.45rem;">
+        <div id="cloudSyncStatusBadge" onclick="if(window.appStore && typeof window.appStore.fetchCloudCalls==='function') window.appStore.fetchCloudCalls(true)" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 700; color: #10b981; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); padding: 0.25rem 0.55rem; border-radius: 20px; cursor: pointer; user-select: none;" title="Centralized Real-Time Cloud Database: Synchronized across Mobile, PC & Incognito (Click to Force Sync)">
+          <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+          <span id="cloudSyncText">Cloud Synced</span>
+        </div>
         <button id="themeToggleBtn" onclick="window._toggleAppTheme()" class="theme-toggle" title="Toggle Light/Dark Theme" style="width: 32px; height: 32px; font-size: 0.9rem;">
           <i class="fas fa-moon"></i>
         </button>

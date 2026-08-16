@@ -257,11 +257,19 @@ class AppStore {
       
       // Auto-calculate conveyance cost ONLY when distance is manually provided by engineer
       if ('distanceKm' in updatedFields) {
-        const dist = parseFloat(updatedFields.distanceKm);
+        const parseNum = (val) => {
+          if (val === null || val === undefined || val === '') return null;
+          const cleaned = String(val).replace(/[^0-9.]/g, '');
+          if (cleaned === '') return null;
+          const num = parseFloat(cleaned);
+          return isNaN(num) ? null : num;
+        };
+
+        const dist = parseNum(updatedFields.distanceKm);
         const userRate = (window.authStore && window.authStore.currentUser && window.authStore.currentUser.conveyanceRate) ? parseFloat(window.authStore.currentUser.conveyanceRate) : null;
         const rate = (userRate && !isNaN(userRate) && userRate > 0) ? userRate : ((this.settings && this.settings.ratePerKm) ? parseFloat(this.settings.ratePerKm) : 5);
 
-        if (!isNaN(dist) && dist >= 0) {
+        if (dist !== null && dist >= 0) {
           updatedFields.distanceKm = dist;
           updatedFields.conveyanceCost = Math.round(dist * rate);
           updatedFields.isManualInput = true;

@@ -50,17 +50,26 @@ class FieldCallDashboard {
     const incompleteCalls = calls.filter(c => norm(c.status) === 'incomplete').length;
 
     // Total Expense & Distance (Calculated for all calls with logged distance / travel)
+    const parseNum = (val) => {
+      if (val === null || val === undefined || val === '') return null;
+      const cleaned = String(val).replace(/[^0-9.]/g, '');
+      if (cleaned === '') return null;
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    };
+
     let totalDistance = 0;
     let totalConveyance = 0;
     calls.forEach(c => {
-      const dist = parseFloat(c.distanceKm);
-      if (!isNaN(dist) && dist > 0) {
+      const dist = parseNum(c.distanceKm);
+      const costStored = parseNum(c.conveyanceCost);
+
+      if (dist !== null && dist > 0) {
         totalDistance += dist;
-        // Use stored conveyanceCost if available, otherwise calculate from distance * rate
-        const cost = (c.conveyanceCost !== null && c.conveyanceCost !== undefined && parseFloat(c.conveyanceCost) >= 0)
-          ? parseFloat(c.conveyanceCost)
-          : Math.round(dist * rate);
+        const cost = (costStored !== null && costStored >= 0) ? costStored : Math.round(dist * rate);
         totalConveyance += cost;
+      } else if (costStored !== null && costStored > 0) {
+        totalConveyance += costStored;
       }
     });
 

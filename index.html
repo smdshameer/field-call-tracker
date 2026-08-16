@@ -2333,6 +2333,14 @@
         var totalConveyance = 0;
         var totalAgeDays = 0;
 
+        var parseNum = function(val) {
+          if (val === null || val === undefined || val === '') return null;
+          var cleaned = String(val).replace(/[^0-9.]/g, '');
+          if (cleaned === '') return null;
+          var num = parseFloat(cleaned);
+          return isNaN(num) ? null : num;
+        };
+
         for (var i = 0; i < calls.length; i++) {
           var c = calls[i];
           var st = norm(c.status);
@@ -2348,13 +2356,15 @@
             notStartedCalls++;
           }
 
-          var dist = parseFloat(c.distanceKm);
-          if (!isNaN(dist) && dist > 0) {
+          var dist = parseNum(c.distanceKm);
+          var costStored = parseNum(c.conveyanceCost);
+
+          if (dist !== null && dist > 0) {
             totalDistance += dist;
-            var cost = (c.conveyanceCost !== null && c.conveyanceCost !== undefined && parseFloat(c.conveyanceCost) >= 0)
-              ? parseFloat(c.conveyanceCost)
-              : Math.round(dist * rate);
+            var cost = (costStored !== null && costStored >= 0) ? costStored : Math.round(dist * rate);
             totalConveyance += cost;
+          } else if (costStored !== null && costStored > 0) {
+            totalConveyance += costStored;
           }
 
           var age = parseInt(c.ageDays);

@@ -399,9 +399,9 @@ class RoutePlanner {
       // Search Filter
       if (this.searchQuery) {
         calls = calls.filter(c => 
-          (c.schoolName && c.schoolName.toLowerCase().includes(this.searchQuery)) ||
-          (c.udise && c.udise.toLowerCase().includes(this.searchQuery)) ||
-          (c.issue && c.issue.toLowerCase().includes(this.searchQuery))
+          (c.schoolName && String(c.schoolName).toLowerCase().includes(this.searchQuery)) ||
+          (c.udise && String(c.udise).toLowerCase().includes(this.searchQuery)) ||
+          (c.issue && String(c.issue).toLowerCase().includes(this.searchQuery))
         );
       }
 

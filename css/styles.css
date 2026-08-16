@@ -1669,6 +1669,17 @@ textarea.form-control {
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
 }
 
+.sidebar-overlay:not(.active) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.modal-overlay:not(.active),
+.drawer-overlay:not(.active) {
+  pointer-events: none !important;
+}
+
 .sidebar-drawer {
   position: absolute;
   top: 0;

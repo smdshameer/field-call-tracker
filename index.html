@@ -752,7 +752,7 @@
   <!-- Top Navigation Header -->
   <header class="navbar" id="appMainNavbar">
     <div class="brand-wrapper" style="display: flex; align-items: center; gap: 0.75rem;">
-      <button id="mobileMenuToggleBtn" onclick="window.openAppSidebar()" class="sidebar-toggle-btn" title="Open Navigation Menu">
+      <button id="mobileMenuToggleBtn" type="button" onclick="window.toggleAppSidebar(event)" class="sidebar-toggle-btn" title="Toggle Navigation Menu">
         <i class="fas fa-bars"></i>
       </button>
       <div class="brand-icon" style="background: transparent; padding: 0; overflow: hidden;">
@@ -2505,19 +2505,52 @@
   <!-- Theme Toggle & COMPLETE INLINE ROUTE PLANNER FIX -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Robust Global Scroll Restorer
+      window.restoreBodyScroll = function() {
+        var anyActiveModal = document.querySelector('.modal-overlay.active, .drawer-overlay.active, .sidebar-overlay.active');
+        if (!anyActiveModal) {
+          document.body.style.overflow = '';
+          document.body.style.overflowY = '';
+          document.body.style.position = '';
+          document.body.style.touchAction = '';
+          document.documentElement.style.overflow = '';
+          document.documentElement.style.overflowY = '';
+        }
+      };
+
       // Global Sidebar Helper Functions (Zero-shake GPU accelerated)
       window.openAppSidebar = function() {
         var s = document.getElementById('appSidebarOverlay');
         if (s) {
           s.classList.add('active');
+          s.style.opacity = '1';
+          s.style.visibility = 'visible';
+          s.style.pointerEvents = 'auto';
           document.body.style.overflow = 'hidden';
+          document.documentElement.style.overflow = 'hidden';
         }
       };
+
       window.closeAppSidebar = function() {
         var s = document.getElementById('appSidebarOverlay');
         if (s) {
           s.classList.remove('active');
-          document.body.style.overflow = '';
+          s.style.opacity = '';
+          s.style.visibility = '';
+          s.style.pointerEvents = '';
+        }
+        window.restoreBodyScroll();
+      };
+
+      window.toggleAppSidebar = function(e) {
+        if (e && typeof e.stopPropagation === 'function') {
+          e.stopPropagation();
+        }
+        var s = document.getElementById('appSidebarOverlay');
+        if (s && s.classList.contains('active')) {
+          window.closeAppSidebar();
+        } else {
+          window.openAppSidebar();
         }
       };
 
@@ -4414,6 +4447,9 @@
           } else {
             window.closeAllModals();
           }
+          if (typeof window.restoreBodyScroll === 'function') {
+            window.restoreBodyScroll();
+          }
           return;
         }
 
@@ -4427,6 +4463,9 @@
           t.style.opacity = '';
           t.style.visibility = '';
           t.style.pointerEvents = '';
+          if (typeof window.restoreBodyScroll === 'function') {
+            window.restoreBodyScroll();
+          }
         }
       }
 

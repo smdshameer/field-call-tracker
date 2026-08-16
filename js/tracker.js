@@ -337,6 +337,12 @@ class FieldCallTracker {
     if (closeViewHmBtn1) closeViewHmBtn1.addEventListener('click', closeViewHmOverlay);
     if (closeViewHmBtn2) closeViewHmBtn2.addEventListener('click', closeViewHmOverlay);
 
+    // Helper for safe DOM value extraction
+    const getV = (id, def = '') => {
+      const el = document.getElementById(id);
+      return el ? el.value : def;
+    };
+
     // Handle Edit Form Submit
     if (editCallForm) {
       editCallForm.addEventListener('submit', (e) => {
@@ -344,29 +350,31 @@ class FieldCallTracker {
         if (!this.activeEditId) return;
 
         const adminEngSelect = document.getElementById('editAssignedEngineerSelect');
-        const reassignedEng = (adminEngSelect && adminEngSelect.value) ? adminEngSelect.value : document.getElementById('editVisitedBy').value;
+        const reassignedEng = (adminEngSelect && adminEngSelect.value) ? adminEngSelect.value : getV('editVisitedBy');
 
         const updatedData = {
-          status: document.getElementById('editStatus').value,
-          distanceKm: document.getElementById('editDistanceKm').value,
-          dateClosed: document.getElementById('editDateClosed').value,
+          status: getV('editStatus', 'PENDING'),
+          distanceKm: getV('editDistanceKm', '0'),
+          dateClosed: getV('editDateClosed', ''),
           visitedBy: reassignedEng,
-          actionTaken: document.getElementById('editActionTaken').value,
-          materialsUsed: document.getElementById('editMaterialsUsed').value,
-          remark: document.getElementById('editRemark') ? document.getElementById('editRemark').value : '',
-          ownCashSpent: document.getElementById('editOwnCashSpent') ? document.getElementById('editOwnCashSpent').value : 0,
-          ownCashReason: document.getElementById('editOwnCashReason') ? document.getElementById('editOwnCashReason').value : '',
-          addlIssues: document.getElementById('editAddlIssues') ? document.getElementById('editAddlIssues').value : '',
-          missingMaterials: document.getElementById('editMissingMaterials') ? document.getElementById('editMissingMaterials').value : '',
-          escalationFlag: document.getElementById('editEscalationFlag') ? document.getElementById('editEscalationFlag').value : 'NONE',
-          reasonIncomplete: document.getElementById('editReasonIncomplete').value,
-          hmName: document.getElementById('editHmName') ? document.getElementById('editHmName').value : '',
+          actionTaken: getV('editActionTaken', ''),
+          materialsUsed: getV('editMaterialsUsed', ''),
+          remark: getV('editRemark', ''),
+          ownCashSpent: parseFloat(getV('editOwnCashSpent', 0)) || 0,
+          ownCashReason: getV('editOwnCashReason', ''),
+          addlIssues: getV('editAddlIssues', ''),
+          missingMaterials: getV('editMissingMaterials', ''),
+          escalationFlag: getV('editEscalationFlag', 'NONE'),
+          reasonIncomplete: getV('editReasonIncomplete', ''),
+          hmName: getV('editHmName', ''),
           hmSignedSheet: this.activeHmSignedSheet || '',
           sitePhoto: (this.activeSitePhotos && this.activeSitePhotos.length > 0) ? this.activeSitePhotos[0] : '',
           sitePhotos: this.activeSitePhotos || []
         };
 
-        window.appStore.updateCall(this.activeEditId, updatedData);
+        if (window.appStore && typeof window.appStore.updateCall === 'function') {
+          window.appStore.updateCall(this.activeEditId, updatedData);
+        }
         closeDrawerFn();
       });
     }
@@ -396,23 +404,25 @@ class FieldCallTracker {
       addCallForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const newCallData = {
-          udise: document.getElementById('addUdise').value,
-          schoolName: document.getElementById('addSchoolName').value,
-          block: document.getElementById('addBlock').value,
-          issue: document.getElementById('addIssue').value,
-          category: document.getElementById('addCategory').value,
-          contactNo: document.getElementById('addContactNo').value,
-          zone611001: document.getElementById('addZone').value,
-          status: document.getElementById('addStatus').value,
-          distanceKm: document.getElementById('addDistanceKm').value,
-          visitedBy: document.getElementById('addVisitedBy').value,
-          actionTaken: document.getElementById('addActionTaken') ? document.getElementById('addActionTaken').value : '',
-          materialsUsed: document.getElementById('addMaterialsUsed') ? document.getElementById('addMaterialsUsed').value : '',
-          ownCashSpent: document.getElementById('addOwnCashSpent') ? document.getElementById('addOwnCashSpent').value : 0,
-          ownCashReason: document.getElementById('addOwnCashReason') ? document.getElementById('addOwnCashReason').value : '',
+          udise: getV('addUdise'),
+          schoolName: getV('addSchoolName'),
+          block: getV('addBlock'),
+          issue: getV('addIssue'),
+          category: getV('addCategory'),
+          contactNo: getV('addContactNo'),
+          zone611001: getV('addZone'),
+          status: getV('addStatus', 'PENDING'),
+          distanceKm: getV('addDistanceKm', '0'),
+          visitedBy: getV('addVisitedBy'),
+          actionTaken: getV('addActionTaken'),
+          materialsUsed: getV('addMaterialsUsed'),
+          ownCashSpent: parseFloat(getV('addOwnCashSpent', 0)) || 0,
+          ownCashReason: getV('addOwnCashReason'),
         };
 
-        window.appStore.addCall(newCallData);
+        if (window.appStore && typeof window.appStore.addCall === 'function') {
+          window.appStore.addCall(newCallData);
+        }
         closeAddFn();
       });
     }

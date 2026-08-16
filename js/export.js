@@ -86,7 +86,8 @@ class FieldCallExporter {
     if (copyWhatsappBtn && !copyWhatsappBtn._hasExporterListener) {
       copyWhatsappBtn._hasExporterListener = true;
       copyWhatsappBtn.addEventListener('click', () => {
-        const text = document.getElementById('dailyReportText').value;
+        const reportEl = document.getElementById('dailyReportText');
+        const text = reportEl ? reportEl.value : '';
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(() => {
             alert('✅ Daily Report copied to clipboard! You can now paste it directly into WhatsApp or Email.');

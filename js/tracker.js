@@ -1226,7 +1226,7 @@ class FieldCallTracker {
           <td class="font-mono" style="font-weight: 700;">#${c.id}</td>
           <td>
             <div style="font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
-              <span style="cursor: pointer; color: var(--primary);" onclick="window.openLogCallDrawer(${c.id})">${c.schoolName}</span>
+              <span style="cursor: pointer; color: var(--text-primary);" onclick="window.openLogCallDrawer(${c.id})">${c.schoolName}</span>
               ${todayBadgeHTML}
             </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">

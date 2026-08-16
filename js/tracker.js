@@ -1237,12 +1237,6 @@ class FieldCallTracker {
               ${sitePhotoBadgeHTML}
               ${escalationBadgeHTML}
             </div>
-            <!-- Mobile Instant Log Call Button (Zero Horizontal Scroll Required) -->
-            <div class="mobile-only-action" style="margin-top: 0.35rem;">
-              <button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); window.openLogCallDrawer(${c.id})" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff; font-size: 0.74rem; font-weight: 800; padding: 0.25rem 0.65rem; border-radius: 6px; border: none; box-shadow: 0 2px 6px rgba(24,119,242,0.3); display: inline-flex; align-items: center; gap: 5px;">
-                <i class="fas fa-edit"></i> Log Call / Visit
-              </button>
-            </div>
           </td>
           <td>
             <span class="badge" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.2); font-weight: 800;">${c.district || 'Nagapattinam'}</span>
@@ -1256,7 +1250,7 @@ class FieldCallTracker {
           <td class="font-mono" style="font-weight: 600;">${distStr}</td>
           <td class="font-mono" style="font-weight: 700; color: var(--primary);">${costStr}</td>
           <td>
-            <button class="btn btn-outline btn-sm edit-btn" data-id="${c.id}" onclick="window.openLogCallDrawer ? window.openLogCallDrawer(${c.id}) : (window.tracker && window.tracker.openEditDrawer(${c.id}))" title="Edit Call Log">
+            <button type="button" class="btn btn-outline btn-sm edit-btn" data-id="${c.id}" onclick="window.openLogCallDrawer(${c.id})" style="touch-action: manipulation; cursor: pointer; white-space: nowrap;" title="Edit Call Log">
               <i class="fas fa-edit"></i> Log Call
             </button>
           </td>

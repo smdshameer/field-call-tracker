@@ -1210,11 +1210,11 @@
   </main>
 
   <!-- Edit Drawer Modal -->
-  <div id="editDrawerOverlay" class="drawer-overlay">
+  <div id="editDrawerOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer log-call-drawer">
       <div class="drawer-header">
         <h3 id="editDrawerTitle" class="drawer-title">Log Field Visit</h3>
-        <button id="closeEditDrawer" class="drawer-close"><i class="fas fa-times"></i></button>
+        <button type="button" id="closeEditDrawer" onclick="window.closeAllModals()" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
       </div>
       
       <form id="editCallForm">
@@ -1381,7 +1381,7 @@
             <i class="fas fa-trash-alt"></i> Delete Call
           </button>
           <div class="log-call-footer-btns" style="display: flex; gap: 0.5rem;">
-            <button type="button" id="cancelEditBtn" class="btn btn-outline">Cancel</button>
+            <button type="button" id="cancelEditBtn" onclick="window.closeAllModals()" class="btn btn-outline">Cancel</button>
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Call Log</button>
           </div>
         </div>
@@ -1390,11 +1390,11 @@
   </div>
 
   <!-- Add Call Modal Overlay -->
-  <div id="addCallModalOverlay" class="drawer-overlay">
+  <div id="addCallModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer">
       <div class="drawer-header">
         <h3 class="drawer-title">Log New Field Call</h3>
-        <button id="closeAddModal" class="drawer-close"><i class="fas fa-times"></i></button>
+        <button type="button" id="closeAddModal" onclick="window.closeAllModals()" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
       </div>
 
       <form id="addCallForm">
@@ -1492,7 +1492,7 @@
         </div>
 
         <div class="drawer-footer">
-          <button type="button" id="cancelAddBtn" class="btn btn-outline">Cancel</button>
+          <button type="button" id="cancelAddBtn" onclick="window.closeAllModals()" class="btn btn-outline">Cancel</button>
           <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Call</button>
         </div>
       </form>
@@ -1500,13 +1500,13 @@
   </div>
 
   <!-- Daily Report Share Modal Overlay -->
-  <div id="shareModalOverlay" class="drawer-overlay">
+  <div id="shareModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer share-modal-drawer" style="max-width: 580px;">
       <div class="drawer-header" style="background: var(--primary-light);">
         <h3 class="drawer-title" style="color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
           <i class="fas fa-paper-plane"></i> Share Daily Executive Report
         </h3>
-        <button id="closeShareModal" class="drawer-close"><i class="fas fa-times"></i></button>
+        <button type="button" id="closeShareModal" onclick="window.closeAllModals()" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
       </div>
 
       <div class="drawer-body">
@@ -1821,13 +1821,13 @@
   </div>
 
   <!-- Call Assignment Import Modal Overlay -->
-  <div id="importModalOverlay" class="drawer-overlay">
+  <div id="importModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer import-modal-drawer" style="max-width: 620px;">
       <div class="drawer-header" style="background: var(--primary-light);">
         <h3 class="drawer-title" style="color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
           <i class="fas fa-file-import"></i> Import Calls
         </h3>
-        <button id="closeImportModal" class="drawer-close"><i class="fas fa-times"></i></button>
+        <button type="button" id="closeImportModal" onclick="window.closeAllModals()" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
       </div>
 
       <div class="drawer-body">
@@ -1891,7 +1891,7 @@
       </div>
 
       <div class="drawer-footer import-drawer-footer">
-        <button type="button" id="closeImportBtn" class="btn btn-outline">Cancel</button>
+        <button type="button" id="closeImportBtn" onclick="window.closeAllModals()" class="btn btn-outline">Cancel</button>
         <button type="button" id="confirmImportBtn" class="btn btn-primary" style="display: none; background: #10b981; border-color: #10b981;">
           <i class="fas fa-file-import"></i> Confirm & Import Calls
         </button>
@@ -1949,7 +1949,7 @@
   </div>
 
   <!-- Daily Route Planner Modal Overlay -->
-  <div id="routePlannerOverlay" class="drawer-overlay">
+  <div id="routePlannerOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer route-planner-drawer" style="max-width: 840px; width: 94vw; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
 
       <!-- ═══ HEADER ═══ -->
@@ -1962,7 +1962,7 @@
           <button type="button" onclick="window._clearAllRoutePlanner()" class="btn btn-sm" style="font-size: 0.72rem; padding: 0.3rem 0.65rem; background: rgba(255,255,255,0.2); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: all 0.2s ease;" title="Clear all selections, old route planning, and reset planner">
             <i class="fas fa-trash-alt"></i> Reset & Clear All
           </button>
-          <button id="closeRoutePlanner" onclick="var o=document.getElementById('routePlannerOverlay'); if(o){o.classList.remove('active');o.style.opacity='';o.style.visibility='';o.style.pointerEvents='';}" class="drawer-close" style="color: #ffffff; background: rgba(255,255,255,0.18); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer;" title="Close Modal"><i class="fas fa-times"></i></button>
+          <button type="button" id="closeRoutePlanner" onclick="window.closeAllModals()" class="drawer-close" style="color: #ffffff; background: rgba(255,255,255,0.18); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer;" title="Close Modal"><i class="fas fa-times"></i></button>
         </div>
       </div>
 
@@ -2070,30 +2070,30 @@
   </div>
 
   <!-- View HM Signed Sheet Modal Overlay -->
-  <div id="viewHmSheetOverlay" class="drawer-overlay">
+  <div id="viewHmSheetOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer" style="max-width: 700px;">
       <div class="drawer-header" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.08));">
         <h3 class="drawer-title" id="viewHmSheetTitle"><i class="fas fa-file-signature" style="color: var(--success);"></i> Head Master Signed Call Sheet</h3>
-        <button id="closeViewHmSheet" class="drawer-close"><i class="fas fa-times"></i></button>
+        <button type="button" id="closeViewHmSheet" onclick="window.closeAllModals()" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
       </div>
       <div class="drawer-body" style="text-align: center; max-height: 75vh; overflow-y: auto;">
         <img id="viewHmSheetFullImage" src="" alt="Full HM Signed Call Report Sheet" style="max-width: 100%; height: auto; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-md);">
       </div>
       <div class="drawer-footer">
-        <button type="button" id="closeViewHmSheetBtn" class="btn btn-outline">Close</button>
+        <button type="button" id="closeViewHmSheetBtn" onclick="window.closeAllModals()" class="btn btn-outline">Close</button>
       </div>
     </div>
   </div>
 
   <!-- View Full Site Completion Photo Overlay (Multi-Photo Carousel) -->
-  <div id="viewSitePhotoOverlay" class="drawer-overlay">
+  <div id="viewSitePhotoOverlay" class="drawer-overlay" onclick="if(event.target===this) window.closeAllModals()">
     <div class="drawer" style="max-width: 760px; width: 94vw;">
       <div class="drawer-header" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
           <h3 class="drawer-title" style="color: #fff; font-weight: 800; margin: 0;"><i class="fas fa-camera"></i> On-Site Work Completion Photo</h3>
           <span id="sitePhotoIndexBadge" class="badge" style="background: rgba(255,255,255,0.2); color: #fff; font-size: 0.72rem; font-weight: 700; border-radius: 12px; padding: 0.15rem 0.55rem;">1 / 1</span>
         </div>
-        <button id="closeViewSitePhoto" onclick="document.getElementById('viewSitePhotoOverlay').classList.remove('active')" class="drawer-close" style="color: #fff;"><i class="fas fa-times"></i></button>
+        <button type="button" id="closeViewSitePhoto" onclick="window.closeAllModals()" class="drawer-close" style="color: #fff;" title="Close"><i class="fas fa-times"></i></button>
       </div>
 
       <div class="drawer-body" style="text-align: center; padding: 1rem; background: #0f172a; max-height: 75vh; overflow-y: auto; position: relative; display: flex; align-items: center; justify-content: center; min-height: 280px;">
@@ -2110,7 +2110,7 @@
 
       <div class="drawer-footer" style="display: flex; justify-content: space-between; align-items: center;">
         <div id="sitePhotoThumbnailsStrip" style="display: flex; gap: 0.4rem; overflow-x: auto; max-width: 80%;"></div>
-        <button type="button" onclick="document.getElementById('viewSitePhotoOverlay').classList.remove('active')" class="btn btn-outline">Close</button>
+        <button type="button" onclick="window.closeAllModals()" class="btn btn-outline">Close</button>
       </div>
     </div>
   </div>
@@ -3622,7 +3622,7 @@
       };
     });
 
-    // Global Event Listener Fallback
+    // Global Event Listener Fallback for Route Planner
     document.addEventListener('click', function(e) {
       var t = e.target ? e.target.closest('#routePlannerBtn, .route-planner-btn') : null;
       if (t) {
@@ -3641,6 +3641,95 @@
         }
       }
     }, true);
+
+    // ═════════════════════════════════════════════════════════════════
+    // UNIVERSAL MODAL & DRAWER CLOSER (MOBILE TOUCH & DESKTOP CLICK)
+    // ═════════════════════════════════════════════════════════════════
+    window.closeAllModals = function() {
+      var activeModals = document.querySelectorAll('.drawer-overlay.active, .sidebar-overlay.active, .modal-overlay.active, [id$="ModalOverlay"], [id$="DrawerOverlay"], [id$="Overlay"]');
+      activeModals.forEach(function(el) {
+        el.classList.remove('active');
+        if (el.id === 'fbSignupModalOverlay' || el.id === 'fbResetModalOverlay' || el.id === 'onboardingGuideModalOverlay') {
+          el.style.display = 'none';
+        }
+        el.style.opacity = '';
+        el.style.visibility = '';
+        el.style.pointerEvents = '';
+      });
+    };
+
+    window.closeLogCallDrawer = function() {
+      var ov = document.getElementById('editDrawerOverlay');
+      if (ov) {
+        ov.classList.remove('active');
+        ov.style.opacity = '';
+        ov.style.visibility = '';
+        ov.style.pointerEvents = '';
+      }
+    };
+
+    window.closeAddCallModal = function() {
+      var ov = document.getElementById('addCallModalOverlay');
+      if (ov) {
+        ov.classList.remove('active');
+        ov.style.opacity = '';
+        ov.style.visibility = '';
+        ov.style.pointerEvents = '';
+      }
+    };
+
+    window.closeRoutePlannerModal = function() {
+      var ov = document.getElementById('routePlannerOverlay');
+      if (ov) {
+        ov.classList.remove('active');
+        ov.style.opacity = '';
+        ov.style.visibility = '';
+        ov.style.pointerEvents = '';
+      }
+    };
+
+    // High-Priority Global Touch & Click Delegator for All Close & X Buttons
+    (function() {
+      function _handleModalCloseDelegation(e) {
+        var t = e.target;
+        if (!t) return;
+
+        // 1. Direct hit on any Close button, Cancel button, or X icon
+        var closeBtn = t.closest('.drawer-close, .sidebar-close-btn, .modal-close, #closeEditDrawer, #cancelEditBtn, #closeAddModal, #cancelAddBtn, #closeAuthModal, #closeAuthBtn, #closeShareModal, #closeImportModal, #closeImportBtn, #cancelImportBtn, #closeViewHmSheet, #closeViewHmSheetBtn, #closeViewSitePhoto, #closeEngineerSettings, #closeRoutePlanner, .sidebar-close-btn');
+        if (closeBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var overlay = closeBtn.closest('.drawer-overlay, .sidebar-overlay, .modal-overlay, [id$="Overlay"]');
+          if (overlay) {
+            overlay.classList.remove('active');
+            if (overlay.id === 'fbSignupModalOverlay' || overlay.id === 'fbResetModalOverlay' || overlay.id === 'onboardingGuideModalOverlay') {
+              overlay.style.display = 'none';
+            }
+            overlay.style.opacity = '';
+            overlay.style.visibility = '';
+            overlay.style.pointerEvents = '';
+          } else {
+            window.closeAllModals();
+          }
+          return;
+        }
+
+        // 2. Direct hit on backdrop overlay
+        if (t.classList && (t.classList.contains('drawer-overlay') || t.classList.contains('sidebar-overlay') || t.classList.contains('modal-overlay'))) {
+          e.preventDefault();
+          t.classList.remove('active');
+          if (t.id === 'fbSignupModalOverlay' || t.id === 'fbResetModalOverlay' || t.id === 'onboardingGuideModalOverlay') {
+            t.style.display = 'none';
+          }
+          t.style.opacity = '';
+          t.style.visibility = '';
+          t.style.pointerEvents = '';
+        }
+      }
+
+      document.addEventListener('click', _handleModalCloseDelegation, true);
+      document.addEventListener('touchend', _handleModalCloseDelegation, { passive: false });
+    })();
   </script>
 
 </body>

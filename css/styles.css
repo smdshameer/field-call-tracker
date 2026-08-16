@@ -872,16 +872,43 @@ html.auth-active::-webkit-scrollbar, body.auth-active::-webkit-scrollbar {
   font-weight: 700;
 }
 
-.drawer-close {
+.drawer-close,
+.sidebar-close-btn,
+.modal-close {
   background: transparent;
   border: none;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   color: var(--text-muted);
   cursor: pointer;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.08) !important;
+  position: relative !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  padding: 8px !important;
+  border-radius: 50% !important;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.drawer-close:hover {
+.drawer-close i,
+.sidebar-close-btn i,
+.modal-close i {
+  pointer-events: none !important;
+}
+
+.drawer-close:hover,
+.sidebar-close-btn:hover,
+.modal-close:hover,
+.drawer-close:active,
+.sidebar-close-btn:active,
+.modal-close:active {
   color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .drawer-body {

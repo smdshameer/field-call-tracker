@@ -3679,9 +3679,8 @@
     };
 
     window.openShareModal = function() {
-      if (window.exporter && typeof window.exporter.openShareModal === 'function') {
-        window.exporter.openShareModal();
-        return;
+      if (window.exporter && typeof window.exporter.updateDailyReportText === 'function') {
+        window.exporter.updateDailyReportText();
       }
       var ov = document.getElementById('shareModalOverlay');
       if (ov) {
@@ -3690,9 +3689,11 @@
         ov.style.visibility = 'visible';
         ov.style.pointerEvents = 'auto';
       }
-      if (window.exporter && typeof window.exporter.updateDailyReportText === 'function') {
-        window.exporter.updateDailyReportText();
-      }
+      setTimeout(function() {
+        if (window.exporter && typeof window.exporter.updateDailyReportText === 'function') {
+          window.exporter.updateDailyReportText();
+        }
+      }, 60);
     };
 
     window.closeShareModal = function() {

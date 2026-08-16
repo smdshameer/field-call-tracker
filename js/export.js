@@ -9,6 +9,9 @@ class FieldCallExporter {
 
   init() {
     this.bindEvents();
+    setTimeout(() => {
+      this.updateDailyReportText();
+    }, 150);
   }
 
   getCallsData() {
@@ -31,7 +34,15 @@ class FieldCallExporter {
   openShareModal() {
     this.updateDailyReportText();
     const shareModalOverlay = document.getElementById('shareModalOverlay');
-    if (shareModalOverlay) shareModalOverlay.classList.add('active');
+    if (shareModalOverlay) {
+      shareModalOverlay.classList.add('active');
+      shareModalOverlay.style.opacity = '1';
+      shareModalOverlay.style.visibility = 'visible';
+      shareModalOverlay.style.pointerEvents = 'auto';
+    }
+    setTimeout(() => {
+      this.updateDailyReportText();
+    }, 60);
   }
 
   bindEvents() {
@@ -408,9 +419,11 @@ ${completedLogText}
 
   updateDailyReportText() {
     try {
+      const text = this.generateDailyReportText();
       const reportArea = document.getElementById('dailyReportText');
       if (reportArea) {
-        reportArea.value = this.generateDailyReportText();
+        reportArea.value = text;
+        reportArea.textContent = text;
       }
       this.renderSingleCallCards();
     } catch(err) {

@@ -829,21 +829,23 @@
       <!-- User Profile Card in Sidebar -->
       <div class="sidebar-user-card">
         <div class="sidebar-user-info">
-          <i class="fas fa-user-circle" style="color: var(--primary); font-size: 1.8rem;"></i>
-          <div style="flex: 1; min-width: 0;">
-            <div id="sidebarUserName" style="font-weight: 800; font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Mohamad Shameer</div>
-            <div id="sidebarUserRole" style="font-size: 0.72rem; color: var(--text-muted);">Field Engineer (Emp ID: 569)</div>
+          <div class="sidebar-user-avatar">
+            <i class="fas fa-user-circle"></i>
           </div>
-          <button id="sidebarThemeToggleBtn" class="theme-toggle" title="Toggle Theme" onclick="window._toggleAppTheme()">
+          <div class="sidebar-user-details">
+            <div id="sidebarUserName" class="sidebar-user-name">Mohamed Shameer</div>
+            <div id="sidebarUserRole" class="sidebar-user-role">Field Engineer (Emp ID: 569)</div>
+          </div>
+          <button id="sidebarThemeToggleBtn" class="sidebar-theme-btn" title="Toggle Theme" onclick="window._toggleAppTheme()">
             <i class="fas fa-moon"></i>
           </button>
         </div>
 
         <div class="sidebar-user-btns">
-          <button type="button" onclick="window.openModalFromSidebar(function(){ window._openEngineerSettingsModal(); })" class="btn btn-sm btn-outline" style="flex: 1; color: var(--primary); border-color: var(--primary); font-size: 0.75rem;">
+          <button type="button" onclick="window.openModalFromSidebar(function(){ window._openEngineerSettingsModal(); })" class="btn btn-sm btn-outline sidebar-action-btn btn-settings">
             <i class="fas fa-cog"></i> Settings
           </button>
-          <button type="button" id="sidebarSwitchUserBtn" onclick="window.closeAppSidebar(); window.authStore.logout();" class="btn btn-sm btn-outline" style="flex: 1; font-size: 0.75rem; color: #ef4444; border-color: rgba(239,68,68,0.4);">
+          <button type="button" id="sidebarSwitchUserBtn" onclick="window.closeAppSidebar(); window.authStore.logout();" class="btn btn-sm btn-outline sidebar-action-btn btn-logout">
             <i class="fas fa-right-from-bracket"></i> Log Out
           </button>
         </div>

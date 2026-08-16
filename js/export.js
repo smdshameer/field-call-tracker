@@ -277,7 +277,44 @@ class FieldCallExporter {
     }
   }
 
+  isCallCompletedToday(c) {
+    if (!c) return false;
+    const status = String(c.status || '').trim().toLowerCase();
+    if (status !== 'completed') return false;
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayISO = `${y}-${m}-${d}`;
+    const todayIN = `${d}/${m}/${y}`;
+    const todayDash = `${d}-${m}-${y}`;
+
+    const dc = String(c.dateClosed || '').trim();
+    if (!dc) {
+      const tr = String(c.ticketRaisedOn || '').trim();
+      if (tr === todayISO || tr === todayIN || tr === todayDash) return true;
+      return true;
+    }
+
+    if (dc === todayISO || dc === todayIN || dc === todayDash || dc.includes(todayISO)) {
+      return true;
+    }
+
+    try {
+      const parsed = new Date(dc);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toDateString() === now.toDateString();
+      }
+    } catch(e) {}
+
+    return false;
+  }
+
   generateDailyReportText() {
+    if (typeof window.generateAndPopulateDailyReport === 'function') {
+      return window.generateAndPopulateDailyReport();
+    }
     const S = (v, def = '') => (v !== null && v !== undefined) ? String(v).trim() : def;
     const N = (v, def = 0) => {
       const parsed = parseFloat(v);
@@ -287,35 +324,38 @@ class FieldCallExporter {
     const calls = this.getCallsData() || [];
     const todayFormatted = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
     const user = window.authStore ? window.authStore.currentUser : null;
-    const engineerName = user ? S(user.name, 'Mohamad Shameer') : 'Mohamad Shameer';
+    const engineerName = user ? S(user.name, 'Mohamed Shameer') : 'Mohamed Shameer';
     const engineerEmpId = user ? S(user.empId, '569') : '569';
-    const engineerEmail = user ? S(user.email, 'mohamadshameer@kssmart.co') : 'mohamadshameer@kssmart.co';
+    const engineerEmail = user ? S(user.email, 'smssiddiq2011@gmail.com') : 'smssiddiq2011@gmail.com';
     const engineerDistrict = user ? S(user.district, 'Nagapattinam') : 'Nagapattinam';
 
     const total = calls.length;
-    const completed = calls.filter(c => S(c.status) === 'Completed');
+    const todayCompleted = calls.filter(c => this.isCallCompletedToday(c));
     const inProgress = calls.filter(c => S(c.status) === 'In Progress');
     const notStarted = calls.filter(c => S(c.status) === 'Not Started' || !c.status);
     const incomplete = calls.filter(c => S(c.status) === 'Incomplete');
 
-    const totalDistance = calls.reduce((sum, c) => sum + N(c.distanceKm), 0);
-    const totalConveyance = calls.reduce((sum, c) => sum + N(c.conveyanceCost), 0);
-    const totalOwnCash = calls.reduce((sum, c) => sum + N(c.ownCashSpent), 0);
+    const conveyanceRate = user ? N(user.conveyanceRate, 5) : 5;
+    const dailyTargetGoal = user ? N(user.dailyTargetGoal, 3) : 3;
+
+    const totalDistance = todayCompleted.reduce((sum, c) => sum + N(c.distanceKm), 0);
+    const totalConveyance = todayCompleted.reduce((sum, c) => sum + N(c.conveyanceCost || (N(c.distanceKm) * conveyanceRate)), 0);
+    const totalOwnCash = todayCompleted.reduce((sum, c) => sum + N(c.ownCashSpent), 0);
 
     // Block Breakdown
     const blocks = ['Nagapattinam', 'Kelvelur', 'Thirumarugal', 'Vedaranyam', 'Thalainayar', 'Keezhaiyur'];
     let blockSummary = '';
     blocks.forEach(b => {
       const bCalls = calls.filter(c => S(c.block) === b);
-      const bComp = bCalls.filter(c => S(c.status) === 'Completed').length;
-      blockSummary += `  • *${b}:* ${bComp}/${bCalls.length} Completed\n`;
+      const bComp = todayCompleted.filter(c => S(c.block) === b).length;
+      blockSummary += `  • *${b}:* ${bComp} Completed Today (${bCalls.length} Total Tickets)\n`;
     });
 
     // Detailed Completed Calls Log
     let completedLogText = '';
     let hmSignedCount = 0;
-    if (completed.length > 0) {
-      completedLogText = completed.map((c, idx) => {
+    if (todayCompleted.length > 0) {
+      completedLogText = todayCompleted.map((c, idx) => {
         const rawMaterials = S(c.materialsUsed);
         const spares = rawMaterials ? rawMaterials : 'None';
         const cashSpentVal = N(c.ownCashSpent);
@@ -344,23 +384,21 @@ class FieldCallExporter {
    • *Remark:* ${remarkStr}
    • *School HM Signed Sheet:* ${hmSignedStr}${hmNameStr}
    • *Inter-School Distance:* ${distVal}
-   • *Field Engineer:* ${S(c.visitedBy, engineerName)} | *Date Closed:* ${S(c.dateClosed, 'N/A')}`;
+   • *Field Engineer:* ${S(c.visitedBy, engineerName)} | *Date Closed:* ${S(c.dateClosed, todayFormatted)}`;
       }).join('\n\n');
     } else {
-      completedLogText = '  - No completed calls logged yet today.';
+      completedLogText = '  - No completed calls recorded for today yet.\n  (Complete a call log with Action Taken and HM Signature to record completed visits in real-time).';
     }
 
     const companyName = user ? S(user.companyName, 'KS SMART SOLUTIONS') : 'KS SMART SOLUTIONS';
     const projectName = user ? S(user.projectName, 'TAMIL NADU SCHOOL PROJECT') : 'TAMIL NADU SCHOOL PROJECT';
     const transportMode = user ? S(user.vehicleType, 'Own Bike') : 'Own Bike';
-    const conveyanceRate = user ? N(user.conveyanceRate, 5) : 5;
-    const dailyTargetGoal = user ? N(user.dailyTargetGoal, 3) : 3;
     const vehicleNoStr = (user && S(user.vehicleNo)) ? ` (${S(user.vehicleNo)})` : '';
 
     const homeLocation = user ? S(user.homeBaseLocation, `${engineerDistrict}, Tamil Nadu 611001`) : `${engineerDistrict}, Tamil Nadu 611001`;
-    const targetStatusStr = completed.length >= dailyTargetGoal 
-      ? `*${completed.length} / ${dailyTargetGoal} Calls Completed (100% Target Met)* ✅` 
-      : `*${completed.length} / ${dailyTargetGoal} Calls Completed (${dailyTargetGoal - completed.length} remaining to reach target)* ⚠️`;
+    const targetStatusStr = todayCompleted.length >= dailyTargetGoal 
+      ? `*${todayCompleted.length} / ${dailyTargetGoal} Calls Completed Today (100% Target Met)* ✅` 
+      : `*${todayCompleted.length} / ${dailyTargetGoal} Calls Completed Today (${dailyTargetGoal - todayCompleted.length} remaining to reach target)* ⚠️`;
 
     // Escalations & Blockers Block for Management / Vendor Action
     const escalatedCalls = calls.filter(c => (S(c.escalationFlag) && S(c.escalationFlag) !== 'NONE') || S(c.missingMaterials));
@@ -388,33 +426,33 @@ class FieldCallExporter {
 *🏍️ Transport:* ${transportMode}${vehicleNoStr} (Reimbursement @ ₹${conveyanceRate}/km)
 ============================================
 
-*🎯 DAILY TARGET STATUS (MIN ${dailyTargetGoal} CALLS/DAY):*
+*🎯 TODAY'S TARGET STATUS (MIN ${dailyTargetGoal} CALLS/DAY):*
 • ${targetStatusStr}
-• *HM Signed Report Sheets:* *${hmSignedCount} / ${completed.length > 0 ? completed.length : 1} Attached*
+• *HM Signed Report Sheets:* *${hmSignedCount} / ${todayCompleted.length > 0 ? todayCompleted.length : 1} Attached*
 
 *📈 EXECUTIVE TICKETING SUMMARY:*
 • *Total Field Tickets:* ${total}
-• *Completed Calls:* *${completed.length}* (*${total > 0 ? Math.round((completed.length / total) * 100) : 0}%* completion rate)
+• *Today's Completed Calls:* *${todayCompleted.length}*
 • *In Progress:* ${inProgress.length}
 • *Not Started / Pending:* ${notStarted.length}
 • *Incomplete:* ${incomplete.length}
 
-*💰 INTER-SCHOOL BIKE CONVEYANCE & EXPENSES:*
-• *Total Round-Trip Distance:* *${totalDistance} km* (Home → Schools → Home)
-• *Total Conveyance Expense:* *₹${totalConveyance.toLocaleString('en-IN')}* (at ₹${conveyanceRate}/km)
+*💰 TODAY'S BIKE CONVEYANCE & EXPENSES:*
+• *Total Inter-School Distance Today:* *${totalDistance} km*
+• *Total Conveyance Claim Today:* *₹${totalConveyance.toLocaleString('en-IN')}* (at ₹${conveyanceRate}/km)
 • *Total Own Cash Spent on Spares:* *₹${totalOwnCash.toLocaleString('en-IN')}*
 
-*📍 BLOCK-WISE PROGRESS:*
+*📍 BLOCK-WISE TODAY'S PROGRESS:*
 ${blockSummary.trimEnd()}
 ${escalationBlock}
 
 ============================================
-*🛠️ COMPLETED CALLS - ACTION, SPARES & HM SIGNATURE LOG (${completed.length} Call(s)):*
+*🛠️ TODAY'S COMPLETED CALLS - ACTION, SPARES & HM SIGNATURE LOG (${todayCompleted.length} Call(s)):*
 --------------------------------------------
 ${completedLogText}
 
 --------------------------------------------
-*Report generated automatically via KS Smart Solutions Field Call Tracker.*`;
+*Report generated automatically in real-time via KS Smart Solutions Field Call Tracker.*`;
   }
 
   updateDailyReportText() {
@@ -433,33 +471,33 @@ ${completedLogText}
 
   generateConveyanceClaimText() {
     const calls = this.getCallsData();
-    const completed = calls.filter(c => c.status === 'Completed' || (parseFloat(c.distanceKm) > 0));
+    const todayCompleted = calls.filter(c => this.isCallCompletedToday(c));
     const user = window.authStore ? window.authStore.currentUser : null;
     const companyName = user ? (user.companyName || 'KS SMART SOLUTIONS') : 'KS SMART SOLUTIONS';
-    const engineerName = user ? user.name : 'Mohamad Shameer';
-    const engineerEmpId = user ? user.empId : '569';
+    const engineerName = user ? (user.name || 'Mohamed Shameer') : 'Mohamed Shameer';
+    const engineerEmpId = user ? (user.empId || '569') : '569';
     const engineerDistrict = user ? (user.district || 'Nagapattinam') : 'Nagapattinam';
     const transportMode = user ? (user.vehicleType || 'Own Bike') : 'Own Bike';
     const conveyanceRate = user ? (user.conveyanceRate || 5) : 5;
     const vehicleNoStr = user && user.vehicleNo ? ` (${user.vehicleNo})` : '';
     const todayFormatted = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
-    const totalDistance = completed.reduce((sum, c) => sum + (parseFloat(c.distanceKm) || 0), 0);
-    const totalConveyance = completed.reduce((sum, c) => sum + (parseFloat(c.conveyanceCost) || ((parseFloat(c.distanceKm) || 0) * conveyanceRate) || 0), 0);
-    const totalOwnCash = completed.reduce((sum, c) => sum + (parseFloat(c.ownCashSpent) || 0), 0);
+    const totalDistance = todayCompleted.reduce((sum, c) => sum + (parseFloat(c.distanceKm) || 0), 0);
+    const totalConveyance = todayCompleted.reduce((sum, c) => sum + (parseFloat(c.conveyanceCost) || ((parseFloat(c.distanceKm) || 0) * conveyanceRate) || 0), 0);
+    const totalOwnCash = todayCompleted.reduce((sum, c) => sum + (parseFloat(c.ownCashSpent) || 0), 0);
     const grandTotalClaim = totalConveyance + totalOwnCash;
 
     let routeSequenceText = '';
-    if (completed.length > 0) {
-      routeSequenceText = completed.map((c, idx) => {
+    if (todayCompleted.length > 0) {
+      routeSequenceText = todayCompleted.map((c, idx) => {
         const kmStr = c.distanceKm ? ` (${c.distanceKm} km)` : '';
         return `  ${idx + 1}. *${c.schoolName}* [${c.block} Block]${kmStr}`;
       }).join('\n');
     } else {
-      routeSequenceText = '  - No completed calls logged today.';
+      routeSequenceText = '  - No completed calls recorded for today yet.';
     }
 
-    const hmSignedCount = completed.filter(c => c.hmSignedSheet).length;
+    const hmSignedCount = todayCompleted.filter(c => c.hmSignedSheet).length;
 
     return `*🏢 ${companyName.toUpperCase()} - PETROL CONVEYANCE REIMBURSEMENT CLAIM*
 *📅 Date:* ${todayFormatted}
@@ -467,18 +505,18 @@ ${completedLogText}
 *🏍️ Transport:* ${transportMode}${vehicleNoStr} | *Rate:* ₹${conveyanceRate}/km
 ============================================
 
-*📍 TODAY'S TRAVEL ROUTE (${completed.length} CALLS VISITED):*
+*📍 TODAY'S TRAVEL ROUTE (${todayCompleted.length} CALLS COMPLETED):*
 ${routeSequenceText}
 
 ============================================
 *💰 REIMBURSEMENT CLAIM BREAKDOWN:*
-• *Total Distance Traveled:* *${totalDistance} km* (Round-Trip)
+• *Total Distance Traveled Today:* *${totalDistance} km*
 • *Petrol Conveyance Expense:* *₹${totalConveyance.toLocaleString('en-IN')}* (${totalDistance} km × ₹${conveyanceRate}/km)
 • *Own Cash Spent for Spares:* *₹${totalOwnCash.toLocaleString('en-IN')}*
 --------------------------------------------
 *💵 TOTAL AMOUNT CLAIMED:* *₹${grandTotalClaim.toLocaleString('en-IN')}*
 ============================================
-• *HM Signed Report Sheets:* *${hmSignedCount} / ${completed.length} Attached* ✅
+• *HM Signed Report Sheets:* *${hmSignedCount} / ${todayCompleted.length > 0 ? todayCompleted.length : 1} Attached* ✅
 
 *Submitted for approval to Reporting Manager.*`;
   }
@@ -558,9 +596,22 @@ ${routeSequenceText}
     if (!container) return;
 
     const calls = this.getCallsData() || [];
-    let displayCalls = calls;
+    const todayCompleted = calls.filter(c => this.isCallCompletedToday(c));
+    let displayCalls = todayCompleted;
+
+    const tabSingleBtn = document.getElementById('shareTabSingleBtn');
+    if (tabSingleBtn) {
+      tabSingleBtn.innerHTML = `📋 Today's Completed Calls (${todayCompleted.length})`;
+    }
+
     if (displayCalls.length === 0) {
-      container.innerHTML = `<div style="text-align:center; padding: 1.5rem; color: var(--text-muted); font-size: 0.82rem;">No calls available for individual WhatsApp sharing.</div>`;
+      container.innerHTML = `<div style="text-align:center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.84rem; background: var(--bg-main); border: 1.5px dashed var(--border-color); border-radius: 12px; margin: 0.5rem 0;">
+        <i class="fas fa-clipboard-check" style="font-size: 2.2rem; color: #10b981; margin-bottom: 0.6rem; display: block;"></i>
+        <div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 0.35rem;">No Completed Calls Logged for Today Yet</div>
+        <div style="font-size: 0.78rem; line-height: 1.45; max-width: 360px; margin: 0 auto; color: var(--text-secondary);">
+          When you visit schools and mark their status as <strong>"Completed"</strong> with action taken and HM signature, their individual 7-field WhatsApp messages and signed sheets will appear here in real-time.
+        </div>
+      </div>`;
       return;
     }
 
@@ -580,10 +631,10 @@ ${routeSequenceText}
         : `<div style="font-size: 0.71rem; color: var(--danger); margin-top: 0.4rem; background: rgba(239,68,68,0.05); padding: 0.35rem 0.55rem; border-radius: 6px; border: 1px solid rgba(239,68,68,0.2);"><i class="fas fa-exclamation-triangle"></i> School HM Signed Sheet photo missing</div>`;
 
       return `
-        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.95rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div class="single-call-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.95rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
             <div style="font-weight: 800; font-size: 0.86rem; color: var(--text-primary);">${idx + 1}. ${c.schoolName || 'School'}</div>
-            <span class="badge" style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); font-weight: 700;">${c.block || 'Nagapattinam'} Block</span>
+            <span class="badge" style="font-size: 0.7rem; background: rgba(16,185,129,0.12); color: #10b981; font-weight: 700;"><i class="fas fa-check-circle"></i> Completed Today</span>
           </div>
 
           <textarea id="singleCallMsgText_${c.id}" class="form-control font-mono single-call-textarea" style="font-size: 0.8rem; min-height: 180px; line-height: 1.45; margin-bottom: 0.5rem; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; -webkit-opacity: 1 !important; opacity: 1 !important; background: #f8fafc !important; border: 1.5px solid #cbd5e1; padding: 0.65rem; width: 100%; box-sizing: border-box;" readonly>${msgText}</textarea>

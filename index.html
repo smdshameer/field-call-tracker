@@ -3688,6 +3688,40 @@
       }
     };
 
+    window.isCallCompletedToday = function(c) {
+      if (!c) return false;
+      var status = String(c.status || '').trim().toLowerCase();
+      if (status !== 'completed') return false;
+
+      var now = new Date();
+      var y = now.getFullYear();
+      var m = String(now.getMonth() + 1).padStart(2, '0');
+      var d = String(now.getDate()).padStart(2, '0');
+      var todayISO = y + '-' + m + '-' + d;
+      var todayIN = d + '/' + m + '/' + y;
+      var todayDash = d + '-' + m + '-' + y;
+
+      var dc = String(c.dateClosed || '').trim();
+      if (!dc) {
+        var tr = String(c.ticketRaisedOn || '').trim();
+        if (tr === todayISO || tr === todayIN || tr === todayDash) return true;
+        return true;
+      }
+
+      if (dc === todayISO || dc === todayIN || dc === todayDash || dc.indexOf(todayISO) !== -1) {
+        return true;
+      }
+
+      try {
+        var parsed = new Date(dc);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toDateString() === now.toDateString();
+        }
+      } catch(e) {}
+
+      return false;
+    };
+
     window.generateAndPopulateDailyReport = function() {
       try {
         var calls = [];
@@ -3727,7 +3761,7 @@
         var todayFormatted = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
         var total = calls.length;
-        var completed = calls.filter(function(c) { return String(c.status || '').trim() === 'Completed'; });
+        var todayCompleted = calls.filter(window.isCallCompletedToday);
         var inProgress = calls.filter(function(c) { return String(c.status || '').trim() === 'In Progress'; });
         var notStarted = calls.filter(function(c) { var s = String(c.status || '').trim(); return s === 'Not Started' || !s; });
         var incomplete = calls.filter(function(c) { return String(c.status || '').trim() === 'Incomplete'; });
@@ -3736,9 +3770,9 @@
         var totalConveyance = 0;
         var totalOwnCash = 0;
 
-        calls.forEach(function(c) {
+        todayCompleted.forEach(function(c) {
           var d = parseFloat(c.distanceKm) || 0;
-          var co = parseFloat(c.conveyanceCost) || 0;
+          var co = (c.conveyanceCost !== null && c.conveyanceCost !== undefined) ? parseFloat(c.conveyanceCost) : (d * conveyanceRate);
           var ow = parseFloat(c.ownCashSpent) || 0;
           totalDistance += d;
           totalConveyance += co;
@@ -3749,14 +3783,14 @@
         var blockSummary = '';
         blocks.forEach(function(b) {
           var bCalls = calls.filter(function(c) { return String(c.block || '').trim() === b; });
-          var bComp = bCalls.filter(function(c) { return String(c.status || '').trim() === 'Completed'; }).length;
-          blockSummary += '  • *' + b + ':* ' + bComp + '/' + bCalls.length + ' Completed\n';
+          var bComp = todayCompleted.filter(function(c) { return String(c.block || '').trim() === b; }).length;
+          blockSummary += '  • *' + b + ':* ' + bComp + ' Completed Today (' + bCalls.length + ' Total Tickets)\n';
         });
 
         var completedLogText = '';
         var hmSignedCount = 0;
-        if (completed.length > 0) {
-          completedLogText = completed.map(function(c, idx) {
+        if (todayCompleted.length > 0) {
+          completedLogText = todayCompleted.map(function(c, idx) {
             var spares = (c.materialsUsed && String(c.materialsUsed).trim()) ? String(c.materialsUsed).trim() : 'None';
             var cashSpentVal = parseFloat(c.ownCashSpent) || 0;
             var reasonStr = (c.ownCashReason && String(c.ownCashReason).trim()) ? ' *(For: ' + String(c.ownCashReason).trim() + ')*' : '';
@@ -3778,15 +3812,15 @@
               '   • *Remark:* ' + remarkStr + '\n' +
               '   • *School HM Signed Sheet:* ' + hmSignedStr + hmNameStr + '\n' +
               '   • *Inter-School Distance:* ' + distVal + '\n' +
-              '   • *Field Engineer:* ' + (c.visitedBy || engineerName) + ' | *Date Closed:* ' + (c.dateClosed || 'N/A');
+              '   • *Field Engineer:* ' + (c.visitedBy || engineerName) + ' | *Date Closed:* ' + (c.dateClosed || todayFormatted);
           }).join('\n\n');
         } else {
-          completedLogText = '  - No completed calls logged yet today.';
+          completedLogText = '  - No completed calls recorded for today yet.\n  (Complete a call log with Action Taken and HM Signature to record completed visits in real-time).';
         }
 
-        var targetStatusStr = completed.length >= dailyTargetGoal
-          ? '*' + completed.length + ' / ' + dailyTargetGoal + ' Calls Completed (100% Target Met)* ✅'
-          : '*' + completed.length + ' / ' + dailyTargetGoal + ' Calls Completed (' + (dailyTargetGoal - completed.length) + ' remaining to reach target)* ⚠️';
+        var targetStatusStr = todayCompleted.length >= dailyTargetGoal
+          ? '*' + todayCompleted.length + ' / ' + dailyTargetGoal + ' Calls Completed Today (100% Target Met)* ✅'
+          : '*' + todayCompleted.length + ' / ' + dailyTargetGoal + ' Calls Completed Today (' + (dailyTargetGoal - todayCompleted.length) + ' remaining to reach target)* ⚠️';
 
         var reportText = '*🏢 ' + companyName.toUpperCase() + ' - ' + projectName.toUpperCase() + '*\n' +
           '*📊 DAILY FIELD EXECUTIVE EVENING REPORT*\n' +
@@ -3795,33 +3829,39 @@
           '*👷 Field Engineer:* ' + engineerName + ' (*Emp ID:* ' + engineerEmpId + ' | ' + engineerEmail + ')\n' +
           '*🏍️ Transport:* ' + transportMode + vehicleNoStr + ' (Reimbursement @ ₹' + conveyanceRate + '/km)\n' +
           '============================================\n\n' +
-          '*🎯 DAILY TARGET STATUS (MIN ' + dailyTargetGoal + ' CALLS/DAY):*\n' +
+          '*🎯 TODAY\'S TARGET STATUS (MIN ' + dailyTargetGoal + ' CALLS/DAY):*\n' +
           '• ' + targetStatusStr + '\n' +
-          '• *HM Signed Report Sheets:* *' + hmSignedCount + ' / ' + (completed.length > 0 ? completed.length : 1) + ' Attached*\n\n' +
+          '• *HM Signed Report Sheets:* *' + hmSignedCount + ' / ' + (todayCompleted.length > 0 ? todayCompleted.length : 1) + ' Attached*\n\n' +
           '*📈 EXECUTIVE TICKETING SUMMARY:*\n' +
           '• *Total Field Tickets:* ' + total + '\n' +
-          '• *Completed Calls:* *' + completed.length + '* (*' + (total > 0 ? Math.round((completed.length / total) * 100) : 0) + '%* completion rate)\n' +
+          '• *Today\'s Completed Calls:* *' + todayCompleted.length + '*\n' +
           '• *In Progress:* ' + inProgress.length + '\n' +
           '• *Not Started / Pending:* ' + notStarted.length + '\n' +
           '• *Incomplete:* ' + incomplete.length + '\n\n' +
-          '*💰 INTER-SCHOOL BIKE CONVEYANCE & EXPENSES:*\n' +
-          '• *Total Round-Trip Distance:* *' + totalDistance + ' km* (Home → Schools → Home)\n' +
-          '• *Total Conveyance Expense:* *₹' + totalConveyance.toLocaleString('en-IN') + '* (at ₹' + conveyanceRate + '/km)\n' +
+          '*💰 TODAY\'S BIKE CONVEYANCE & EXPENSES:*\n' +
+          '• *Total Inter-School Distance Today:* *' + totalDistance + ' km*\n' +
+          '• *Total Conveyance Claim Today:* *₹' + totalConveyance.toLocaleString('en-IN') + '* (at ₹' + conveyanceRate + '/km)\n' +
           '• *Total Own Cash Spent on Spares:* *₹' + totalOwnCash.toLocaleString('en-IN') + '*\n\n' +
-          '*📍 BLOCK-WISE PROGRESS:*\n' +
+          '*📍 BLOCK-WISE TODAY\'S PROGRESS:*\n' +
           blockSummary.trim() + '\n\n' +
           '============================================\n' +
-          '*🛠️ COMPLETED CALLS - ACTION, SPARES & HM SIGNATURE LOG (' + completed.length + ' Call(s)):*\n' +
+          '*🛠️ TODAY\'S COMPLETED CALLS - ACTION, SPARES & HM SIGNATURE LOG (' + todayCompleted.length + ' Call(s)):*\n' +
           '--------------------------------------------\n' +
           completedLogText + '\n\n' +
           '--------------------------------------------\n' +
-          '*Report generated automatically via KS Smart Solutions Field Call Tracker.*';
+          '*Report generated automatically in real-time via KS Smart Solutions Field Call Tracker.*';
 
         var textarea = document.getElementById('dailyReportText');
         if (textarea) {
           textarea.value = reportText;
           textarea.textContent = reportText;
         }
+
+        var tabSingleBtn = document.getElementById('shareTabSingleBtn');
+        if (tabSingleBtn) {
+          tabSingleBtn.innerHTML = '📋 Today\'s Completed Calls (' + todayCompleted.length + ')';
+        }
+
         return reportText;
       } catch(err) {
         console.error('[DAILY REPORT GENERATOR ERROR]', err);
@@ -3934,12 +3974,26 @@
           } catch(e) {}
         }
 
-        if (!calls || calls.length === 0) {
-          container.innerHTML = '<div style="text-align:center; padding: 1.5rem; color: var(--text-muted); font-size: 0.82rem;">No calls available for individual WhatsApp sharing.</div>';
+        // STRICT FILTER: Today's Completed Calls ONLY
+        var todayCompleted = calls.filter(window.isCallCompletedToday);
+
+        var tabSingleBtn = document.getElementById('shareTabSingleBtn');
+        if (tabSingleBtn) {
+          tabSingleBtn.innerHTML = '📋 Today\'s Completed Calls (' + todayCompleted.length + ')';
+        }
+
+        if (!todayCompleted || todayCompleted.length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.84rem; background: var(--bg-main); border: 1.5px dashed var(--border-color); border-radius: 12px; margin: 0.5rem 0;">' +
+            '<i class="fas fa-clipboard-check" style="font-size: 2.2rem; color: #10b981; margin-bottom: 0.6rem; display: block;"></i>' +
+            '<div style="font-weight: 800; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 0.35rem;">No Completed Calls Logged for Today Yet</div>' +
+            '<div style="font-size: 0.78rem; line-height: 1.45; max-width: 360px; margin: 0 auto; color: var(--text-secondary);">' +
+              'When you visit schools and mark their status as <strong>"Completed"</strong> with action taken and HM signature, their individual 7-field WhatsApp messages and signed sheets will appear here in real-time.' +
+            '</div>' +
+          '</div>';
           return;
         }
 
-        var html = calls.map(function(c, idx) {
+        var html = todayCompleted.map(function(c, idx) {
           var callId = c.id || (idx + 1);
           var msgText = window.generateSingleCallWhatsappText(c);
           var escapedMsgText = msgText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -3960,7 +4014,7 @@
           return '<div class="single-call-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.95rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">' +
               '<div style="font-weight: 800; font-size: 0.86rem; color: var(--text-primary);">' + (idx + 1) + '. ' + (c.schoolName || 'School') + '</div>' +
-              '<span class="badge" style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); font-weight: 700;">' + (c.block || 'Nagapattinam') + ' Block</span>' +
+              '<span class="badge" style="font-size: 0.7rem; background: rgba(16,185,129,0.12); color: #10b981; font-weight: 700;"><i class="fas fa-check-circle"></i> Completed Today</span>' +
             '</div>' +
             '<textarea id="singleCallMsgText_' + callId + '" class="form-control font-mono single-call-textarea" style="font-size: 0.8rem; min-height: 180px; line-height: 1.45; margin-bottom: 0.5rem; color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; -webkit-opacity: 1 !important; opacity: 1 !important; background: #f8fafc !important; border: 1.5px solid #cbd5e1; padding: 0.65rem; width: 100%; box-sizing: border-box;" readonly>' + escapedMsgText + '</textarea>' +
             '<div style="display: flex; gap: 0.5rem; justify-content: flex-end;">' +
@@ -3974,8 +4028,8 @@
 
         container.innerHTML = html;
 
-        // Force explicit .value assignments on all textareas to guarantee instant rendering on mobile
-        calls.forEach(function(c, idx) {
+        // Force explicit .value assignments on all textareas
+        todayCompleted.forEach(function(c, idx) {
           var callId = c.id || (idx + 1);
           var ta = document.getElementById('singleCallMsgText_' + callId);
           if (ta) {

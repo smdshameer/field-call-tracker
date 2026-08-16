@@ -43,13 +43,19 @@
   <!-- Core Auth Module (Pre-loaded) -->
   <script src="js/auth.js?v=106.0"></script>
   <script>
+    // Force immediate unregistration of any old service worker & purge CacheStorage
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('sw.js?v=115.0').then(function(reg) {
-          if (reg && reg.update) reg.update();
-        }).catch(function(err) {
-          console.log('ServiceWorker registration failed: ', err);
-        });
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          registrations[i].unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(cacheNames) {
+        for (var i = 0; i < cacheNames.length; i++) {
+          caches.delete(cacheNames[i]);
+        }
       });
     }
   </script>
@@ -1800,13 +1806,18 @@
                 </div>
               </div>
 
-              <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 1.15rem; line-height: 1.45;">
-                This action will delete all saved ticket statuses, custom engineer details, cached local storage, and reset all call records completely (0 calls).
+              <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.45;">
+                Force purge stale mobile browser caches, PWA offline shells, and re-sync all live calculation engines:
               </p>
 
-              <button type="button" onclick="window._resetAllAppData()" class="btn btn-sm" style="background: #dc2626; color: #ffffff; border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.25rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);" title="Reset all system data completely">
-                <i class="fas fa-trash-alt"></i> Reset All System Data
-              </button>
+              <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 1.15rem;">
+                <button type="button" onclick="window.forceClearMobileCache()" class="btn btn-sm btn-primary" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" title="Force purge browser cache and reload latest version">
+                  <i class="fas fa-sync-alt"></i> 🔄 Force Sync & Clear Cache
+                </button>
+                <button type="button" onclick="window._resetAllAppData()" class="btn btn-sm" style="background: #dc2626; color: #ffffff; border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" title="Reset all system data completely">
+                  <i class="fas fa-trash-alt"></i> Reset All Data
+                </button>
+              </div>
             </div>
           </div>
 
@@ -4687,6 +4698,25 @@
           }
         }
       }, true);
+      // Global Force Clear Mobile Cache & Sync Routine
+      window.forceClearMobileCache = function() {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for (var i = 0; i < regs.length; i++) regs[i].unregister();
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(k) { caches.delete(k); });
+          });
+        }
+        try { sessionStorage.clear(); } catch(e) {}
+        if (window.appStore && typeof window.appStore.enrichCalls === 'function') {
+          window.appStore.enrichCalls();
+          window.appStore.saveCalls();
+        }
+        window.location.reload(true);
+      };
     })();
   </script>
 

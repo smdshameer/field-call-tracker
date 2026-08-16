@@ -119,6 +119,9 @@ class AppStore {
   enrichCalls() {
     const user = (window.authStore && window.authStore.currentUser) || null;
     const defaultDistrict = (user && user.district) ? user.district : 'Nagapattinam';
+    const userRate = (user && user.conveyanceRate && !isNaN(parseFloat(user.conveyanceRate)) && parseFloat(user.conveyanceRate) > 0)
+      ? parseFloat(user.conveyanceRate)
+      : ((this.settings && this.settings.ratePerKm) ? parseFloat(this.settings.ratePerKm) : 5);
 
     this.calls.forEach((c) => {
       if (!c.district) {
@@ -136,6 +139,17 @@ class AppStore {
       }
       if (!c.ipAddress && window.IPPingEngine) {
         c.ipAddress = window.IPPingEngine.getLabIP(c.udise, c.district);
+      }
+
+      // Auto-migrate conveyance cost on existing saved calls
+      if (c.distanceKm !== null && c.distanceKm !== undefined && c.distanceKm !== '') {
+        const cleanDist = parseFloat(String(c.distanceKm).replace(/[^0-9.]/g, ''));
+        if (!isNaN(cleanDist) && cleanDist >= 0) {
+          c.distanceKm = cleanDist;
+          if (c.conveyanceCost === null || c.conveyanceCost === undefined || isNaN(parseFloat(c.conveyanceCost))) {
+            c.conveyanceCost = Math.round(cleanDist * userRate);
+          }
+        }
       }
     });
   }

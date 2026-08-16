@@ -366,8 +366,8 @@ class AppStore {
 
     this.calls.forEach(c => {
       const udiseStr = String(c.udise || '').trim();
-      const issueCore = (c.issue || '').toLowerCase().replace(/#ccc-\d+/g, '').trim();
-      const key = `${udiseStr}_${c.schoolName}_${issueCore}`;
+      const issueCore = String(c.issue || '').toLowerCase().replace(/#ccc-\d+/g, '').trim();
+      const key = `${udiseStr}_${String(c.schoolName || '')}_${issueCore}`;
 
       if (udiseStr && udiseStr !== '33190000000') {
         if (!seenMap.has(key)) {
@@ -389,7 +389,7 @@ class AppStore {
     rawCallsArray.forEach(rawCall => {
       const udiseStr = String(rawCall.udise || '').trim();
       const rawIssue = String(rawCall.issue || '').trim();
-      const ticketMatch = rawCall.issue ? rawCall.issue.match(/#CCC-\d+/i) : null;
+      const ticketMatch = rawIssue.match(/#CCC-\d+/i);
       const ticketId = ticketMatch ? ticketMatch[0].toUpperCase() : null;
 
       const isDuplicate = this.calls.some(c => {
@@ -397,10 +397,10 @@ class AppStore {
         if (cUdise !== udiseStr) return false;
 
         // 1. Exact ticket ID match (#CCC-XXXX)
-        if (ticketId && c.issue && c.issue.toUpperCase().includes(ticketId)) return true;
+        if (ticketId && String(c.issue || '').toUpperCase().includes(ticketId)) return true;
 
         // 2. Exact issue & school match
-        if (c.issue && c.issue.trim().toLowerCase() === rawIssue.toLowerCase()) {
+        if (String(c.issue || '').trim().toLowerCase() === rawIssue.toLowerCase()) {
           return true;
         }
 

@@ -93,15 +93,15 @@ class FieldCallDashboard {
     this.setElementText('kpiAvgAge', `${avgAge} days`);
 
     // Live vs Down Schools Metrics (CCC Portal ReportData)
-    const downCalls = calls.filter(c => (c.status && c.status.toLowerCase().includes('down')) || (c.category && c.category.includes('DOWN')) || (c.issue && c.issue.includes('DOWN')));
+    const downCalls = calls.filter(c => (c.status && String(c.status).toLowerCase().includes('down')) || (c.category && String(c.category).includes('DOWN')) || (c.issue && String(c.issue).includes('DOWN')));
     const downCount = downCalls.length;
     const liveCount = totalCalls - downCount;
     const livePercent = totalCalls > 0 ? ((liveCount / totalCalls) * 100).toFixed(1) : '100';
     const downPercent = totalCalls > 0 ? ((downCount / totalCalls) * 100).toFixed(1) : '0';
 
     // Separated Breakdown: HiTech Labs vs Smart Boards
-    const hitechCalls = calls.filter(c => (c.category && c.category.includes('HIGH')) || (c.issue && (c.issue.toLowerCase().includes('hitech') || c.issue.toLowerCase().includes('lab'))));
-    const hitechDownCount = hitechCalls.filter(c => (c.status && c.status.toLowerCase().includes('down')) || (c.issue && c.issue.includes('DOWN'))).length;
+    const hitechCalls = calls.filter(c => (c.category && String(c.category).includes('HIGH')) || (c.issue && (String(c.issue).toLowerCase().includes('hitech') || String(c.issue).toLowerCase().includes('lab'))));
+    const hitechDownCount = hitechCalls.filter(c => (c.status && String(c.status).toLowerCase().includes('down')) || (c.issue && String(c.issue).includes('DOWN'))).length;
 
     const smartBoardCalls = calls.filter(c => !hitechCalls.includes(c));
     const smartBoardDownCount = downCount - hitechDownCount;

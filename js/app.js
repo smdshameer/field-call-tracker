@@ -1,9 +1,11 @@
 /**
- * Field Call Tracker - Core Application State & Storage
+ * Field Call Tracker - Core Application State & Storage (Centralized Cloud Database Architecture)
  */
 
 const STORAGE_KEY = 'NAGAPATTINAM_FIELD_CALLS_V1';
 const SETTINGS_KEY = 'NAGAPATTINAM_TRACKER_SETTINGS_V1';
+const DB_VERSION_KEY = 'KSSMART_CENTRAL_DB_VERSION';
+const CACHE_CALLS_KEY = 'KSSMART_CENTRAL_CACHED_CALLS';
 
 const defaultSettings = {
   ratePerKm: 5,
@@ -14,8 +16,10 @@ const defaultSettings = {
 class AppStore {
   constructor() {
     this.calls = [];
+    this.version = parseInt(localStorage.getItem(DB_VERSION_KEY) || '0');
     this.settings = { ...defaultSettings };
     this.listeners = [];
+    this._isSyncing = false;
     this.init();
   }
 
@@ -28,13 +32,6 @@ class AppStore {
   }
 
   init() {
-    this.loadUserData();
-    this.setupCloudSync();
-  }
-
-  loadUserData() {
-    const partitionKey = STORAGE_KEY;
-
     // 1. Load User Settings
     const savedSettings = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('fieldCallTracker_settings_v1');
     if (savedSettings) {
@@ -44,71 +41,41 @@ class AppStore {
         console.error('Error loading settings:', e);
       }
     }
-
-    // Apply Theme
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
-    // 2. Explicitly Reset or Wiped Workspace -> 0 Calls
-    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
-    if (isExplicitlyReset) {
-      this.calls = [];
-      localStorage.setItem(STORAGE_KEY, '[]');
-      this.notify();
-      if (typeof window.updateGlobalKpiCards === 'function') {
-        window.updateGlobalKpiCards([], this.settings);
-      }
-      return;
-    }
-
-    // 3. Load Saved Calls from Central Storage
-    const centralCallsStr = localStorage.getItem(STORAGE_KEY);
-    if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
-      try {
-        const parsed = JSON.parse(centralCallsStr);
+    // 2. Load cached calls for instant display while connecting to Central DB
+    try {
+      const cached = localStorage.getItem(CACHE_CALLS_KEY) || localStorage.getItem(STORAGE_KEY);
+      if (cached !== null && cached.trim() !== '') {
+        const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
           this.calls = parsed;
-          if (this.calls.length === 0) {
-            this.notify();
-            if (typeof window.updateGlobalKpiCards === 'function') {
-              window.updateGlobalKpiCards([], this.settings);
-            }
-            return;
-          }
+          this.enrichCalls();
         }
-      } catch (e) {
-        console.error('Error loading centralized calls:', e);
       }
-    } else {
-      console.log('[APP] First-time initialization with 53 baseline calls...');
-      const initialData = window.INITIAL_FIELD_CALLS || [];
-      this.calls = JSON.parse(JSON.stringify(initialData));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
-    }
+    } catch (e) {}
 
-    // Auto-enrich calls with district, block, and IP Address if missing
-    this.enrichCalls();
+    // 3. Initial UI Paint with cached calls (or empty if wiped)
+    this.notify();
 
-    // Auto-clean any duplicate calls
-    this.cleanDuplicateCalls();
-
-    // Persist to local storage only (do NOT push to cloud during startup initialization)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+    // 4. Setup Centralized Real-time Sync
+    this.setupCloudSync();
   }
 
   setupCloudSync() {
-    // 1. BroadcastChannel for instant cross-tab / cross-window sync
+    // Cross-tab broadcast channel
     if ('BroadcastChannel' in window) {
       try {
-        this.broadcastChannel = new BroadcastChannel('kssmart_field_sync');
+        this.broadcastChannel = new BroadcastChannel('kssmart_central_sync_v2');
         this.broadcastChannel.onmessage = (msg) => {
-          if (msg.data && msg.data.type === 'CALLS_MUTATED') {
+          if (msg.data && msg.data.type === 'SYNC') {
             this.fetchCloudCalls(true);
           }
         };
       } catch (e) {}
     }
 
-    // 2. High-priority mobile wakeup triggers (instant sync on app open, tab switch, unlock, or touch)
+    // High-priority mobile wakeup triggers (instant sync on app open, tab switch, unlock)
     window.addEventListener('focus', () => this.fetchCloudCalls(true));
     window.addEventListener('pageshow', () => this.fetchCloudCalls(true));
     window.addEventListener('online', () => this.fetchCloudCalls(true));
@@ -118,11 +85,11 @@ class AppStore {
       }
     });
 
-    // Touch/interaction wakeup for mobile: when user taps or scrolls, check cloud if >2s since last check
+    // Touch/scroll wakeup for mobile: when user taps or scrolls, check cloud if >1.5s since last check
     let lastTouchSync = 0;
     const touchWakeup = () => {
       const now = Date.now();
-      if (now - lastTouchSync > 2000) {
+      if (now - lastTouchSync > 1500) {
         lastTouchSync = now;
         this.fetchCloudCalls(false);
       }
@@ -130,29 +97,28 @@ class AppStore {
     window.addEventListener('pointerdown', touchWakeup, { passive: true });
     window.addEventListener('scroll', touchWakeup, { passive: true });
 
-    // 3. Fast background cloud sync heartbeat (every 2.5 seconds)
-    if (this._cloudSyncInterval) clearInterval(this._cloudSyncInterval);
-    this._cloudSyncInterval = setInterval(() => {
+    // Rapid Central DB Heartbeat (every 2 seconds)
+    if (this._syncInterval) clearInterval(this._syncInterval);
+    this._syncInterval = setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         this.fetchCloudCalls(false);
       }
-    }, 2500);
+    }, 2000);
 
-    // 4. Immediate initial cloud pull on startup
+    // Initial immediate fetch from Central Cloud Database
     this.fetchCloudCalls(true);
-    setTimeout(() => this.fetchCloudCalls(true), 500);
   }
 
   async fetchCloudCalls(force = false) {
-    if (this._isSyncingCloud) return;
-    this._isSyncingCloud = true;
+    if (this._isSyncing) return;
+    this._isSyncing = true;
 
-    // Timeout safety with AbortController to prevent mobile network lockups
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2800);
 
     try {
-      const res = await fetch('/api/calls?t=' + Date.now(), {
+      const url = force ? `/api/calls?t=${Date.now()}` : `/api/calls?v=${this.version}&t=${Date.now()}`;
+      const res = await fetch(url, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache, no-store' },
         signal: controller.signal
@@ -164,92 +130,44 @@ class AppStore {
       const data = await res.json();
       if (!data || typeof data !== 'object') return;
 
-      const cloudTimestamp = data.timestamp || 0;
+      // If server returned modified: false, client is already in sync with Central DB
+      if (data.modified === false && !force) return;
 
-      // 1. Cloud was explicitly wiped to 0 calls
-      if (data.wasReset === true) {
-        if (this.calls.length > 0 || localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
-          console.log('[CLOUD SYNC] Cloud is wiped to 0. Syncing 0 state to this device.');
-          localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
-          localStorage.setItem(STORAGE_KEY, '[]');
-          localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
-          this.calls = [];
-          this.notify();
-          if (typeof window.updateGlobalKpiCards === 'function') {
-            window.updateGlobalKpiCards([], this.settings);
-          }
-          if (window.tracker && typeof window.tracker.render === 'function') {
-            try { window.tracker.render(); } catch(e) {}
-          }
-          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
-            try { window.dashboard.updateDashboard([], this.settings); } catch(e) {}
-          }
-          if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
-            try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
-          }
-        }
-        return;
-      }
+      // New data available from Central Database!
+      const serverVersion = data.version || 1;
+      const serverCalls = Array.isArray(data.calls) ? data.calls : [];
 
-      // 2. Cloud has call records → synchronize immediately
-      if (Array.isArray(data.calls) && data.calls.length > 0) {
-        localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-        const serverStr = JSON.stringify(data.calls);
-        const localStr = JSON.stringify(this.calls);
+      console.log(`[CENTRAL DB] Synced v${serverVersion} with ${serverCalls.length} calls`);
 
-        if (serverStr !== localStr || force) {
-          console.log('[CLOUD SYNC] Live sync updated: ' + data.calls.length + ' calls received from Cloudflare KV.');
-          this.calls = data.calls;
-          this.enrichCalls();
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
-          localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
-          this.notify();
-          if (typeof window.updateGlobalKpiCards === 'function') {
-            window.updateGlobalKpiCards(this.calls, this.settings);
-          }
-          if (window.tracker && typeof window.tracker.render === 'function') {
-            try { window.tracker.render(); } catch(e) {}
-          }
-          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
-            try { window.dashboard.updateDashboard(this.calls, this.settings); } catch(e) {}
-          }
-          if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
-            try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
-          }
-        }
-        return;
-      }
+      this.version = serverVersion;
+      this.calls = serverCalls;
+      this.enrichCalls();
 
-      // 3. Cloud is empty and not explicitly reset → seed cloud from local baseline
-      if (this.calls.length > 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
-        console.log('[CLOUD SYNC] Initial cloud seeding with ' + this.calls.length + ' calls.');
-        this._pushToCloudNow(false);
-      }
+      // Persist to local storage cache
+      localStorage.setItem(DB_VERSION_KEY, String(this.version));
+      localStorage.setItem(CACHE_CALLS_KEY, JSON.stringify(this.calls));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+
+      // Notify all UI views to update immediately
+      this.notify();
     } catch (e) {
       clearTimeout(timeoutId);
-      // Suppress network abort errors on fast tab switching
-      if (e.name !== 'AbortError') {
-        console.warn('[CLOUD SYNC Notice]', e.message);
-      }
     } finally {
-      this._isSyncingCloud = false;
+      this._isSyncing = false;
     }
   }
 
-  async pushToCloud(isExplicitReset = false) {
-    // Debounce: coalesce rapid saves into a single cloud push after 500ms
-    if (this._pushDebounce) clearTimeout(this._pushDebounce);
-    this._pushDebounce = setTimeout(() => this._pushToCloudNow(isExplicitReset), 500);
+  async saveCalls() {
+    this.enrichCalls();
+    this.notify();
+    return this._pushToCloudNow();
   }
 
-  async _pushToCloudNow(isExplicitReset = false) {
+  async _pushToCloudNow() {
     try {
-      const wasReset = isExplicitReset || (this.calls.length === 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true');
-      const timestamp = Date.now();
       const payload = {
-        calls: wasReset ? [] : this.calls,
-        wasReset: wasReset,
-        timestamp: timestamp
+        calls: this.calls,
+        timestamp: Date.now()
       };
       const res = await fetch('/api/calls', {
         method: 'POST',
@@ -257,29 +175,20 @@ class AppStore {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        localStorage.setItem('KSSMART_LAST_SYNC_TS', String(timestamp));
+        const data = await res.json();
+        if (data && data.version) {
+          this.version = data.version;
+          localStorage.setItem(DB_VERSION_KEY, String(this.version));
+          localStorage.setItem(CACHE_CALLS_KEY, JSON.stringify(this.calls));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+        }
         if (this.broadcastChannel) {
-          this.broadcastChannel.postMessage({ type: 'CALLS_MUTATED', wasReset: wasReset, timestamp: timestamp });
+          this.broadcastChannel.postMessage({ type: 'SYNC', version: this.version });
         }
       }
     } catch (e) {
-      console.warn('[CLOUD SYNC] Push deferred:', e.message);
+      console.warn('[Central DB Push error]', e);
     }
-  }
-
-  updateCloudSyncBadge(status) {}
-
-  saveCalls() {
-    const dataStr = JSON.stringify(this.calls);
-    try {
-      localStorage.setItem(STORAGE_KEY, dataStr);
-      this.createAutoBackup();
-    } catch (e) {
-      console.warn('LocalStorage save warning:', e);
-    }
-    this.notify();
-    // Auto-push every local save to cloud for cross-device sync
-    this.pushToCloud(false);
   }
 
   enrichCalls() {
@@ -321,7 +230,6 @@ class AppStore {
   }
 
   switchUser(user) {
-    this.loadUserData();
     this.notify();
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards(this.calls, this.settings);
@@ -343,18 +251,6 @@ class AppStore {
       };
       localStorage.setItem(backupKey, JSON.stringify(payload));
     } catch (e) {}
-  }
-
-  resetAllData(mode) {
-    const partitionKey = this.getUserPartitionKey();
-    if (mode === 'EMPTY') {
-      this.calls = [];
-    } else {
-      const initialData = window.INITIAL_FIELD_CALLS || [];
-      this.calls = JSON.parse(JSON.stringify(initialData));
-    }
-    this.saveCalls();
-    this.notify();
   }
 
   saveSettings() {
@@ -396,6 +292,11 @@ class AppStore {
       }
     } catch(e) {}
     try {
+      if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
+        window.routePlanner.populateAvailableCalls();
+      }
+    } catch(e) {}
+    try {
       if (typeof window.generateAndPopulateDailyReport === 'function') {
         window.generateAndPopulateDailyReport();
       }
@@ -407,7 +308,6 @@ class AppStore {
     } catch(e) {}
   }
 
-  // Alias used by ipPingEngine.js
   notifySubscribers() {
     this.notify();
   }
@@ -522,7 +422,6 @@ class AppStore {
       visitedBy: newCallData.visitedBy || ''
     };
 
-    localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
     this.calls.unshift(fullCall);
     this.saveCalls();
     return fullCall;
@@ -550,101 +449,31 @@ class AppStore {
     this.calls = cleanList;
   }
 
-  addBulkCalls(rawCallsArray) {
-    if (!Array.isArray(rawCallsArray) || rawCallsArray.length === 0) return 0;
-    localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-    let addedCount = 0;
-    rawCallsArray.forEach(rawCall => {
-      const udiseStr = String(rawCall.udise || '').trim();
-      const rawIssue = String(rawCall.issue || '').trim();
-      const ticketMatch = rawIssue.match(/#CCC-\d+/i);
-      const ticketId = ticketMatch ? ticketMatch[0].toUpperCase() : null;
-
-      const isDuplicate = this.calls.some(c => {
-        const cUdise = String(c.udise || '').trim();
-        if (cUdise !== udiseStr) return false;
-
-        // 1. Exact ticket ID match (#CCC-XXXX)
-        if (ticketId && String(c.issue || '').toUpperCase().includes(ticketId)) return true;
-
-        // 2. Exact issue & school match
-        if (String(c.issue || '').trim().toLowerCase() === rawIssue.toLowerCase()) {
-          return true;
-        }
-
-        return false;
-      });
-
-      if (!isDuplicate) {
-        const nextId = this.calls.length > 0 ? Math.max(...this.calls.map(c => Number(c.id) || 0)) + 1 : 1;
-        const dist = rawCall.isManualInput ? parseFloat(rawCall.distanceKm) : null;
-        const conveyanceCost = (!isNaN(dist) && dist !== null && dist >= 0) ? dist * (this.settings.ratePerKm || 5) : null;
-        
-        const fullCall = {
-          id: nextId,
-          udise: rawCall.udise || '',
-          block: rawCall.block || 'Nagapattinam',
-          district: rawCall.district || 'Nagapattinam',
-          schoolName: rawCall.schoolName || '',
-          issue: rawCall.issue || 'CCC Portal Complaint Registered',
-          category: rawCall.category || 'CCC PORTAL COMPLAINT',
-          contactNo: rawCall.contactNo || '',
-          zone611001: rawCall.zone611001 || 'NO',
-          ticketRaisedOn: rawCall.ticketRaisedOn || new Date().toISOString().split('T')[0],
-          ageDays: 1,
-          status: 'Not Started',
-          distanceKm: dist,
-          conveyanceCost: conveyanceCost,
-          dateClosed: '',
-          actionTaken: '',
-          materialsUsed: '',
-          ownCashSpent: 0,
-          ownCashReason: '',
-          visitedBy: rawCall.visitedBy || '',
-          isPortalSynced: true,
-          isNewToday: true
-        };
-        this.calls.unshift(fullCall);
-        addedCount++;
-      }
-    });
-
-    if (addedCount > 0) {
-      this.saveCalls();
-    }
-    return addedCount;
-  }
-
   deleteCall(id) {
     this.calls = this.calls.filter(c => String(c.id) !== String(id) && (isNaN(Number(id)) || Number(c.id) !== Number(id)));
-    if (this.calls.length === 0) {
-      localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
-    }
     this.saveCalls();
   }
 
-  deleteAllCalls() {
-    localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
+  async deleteAllCalls() {
     this.calls = [];
+    localStorage.setItem(CACHE_CALLS_KEY, '[]');
     localStorage.setItem(STORAGE_KEY, '[]');
-    localStorage.setItem('KSSMART_LAST_SYNC_TS', String(Date.now()));
     this.notify();
-    this._pushToCloudNow(true);
+    await this._pushToCloudNow();
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards([], this.settings);
     }
   }
 
-  resetToInitial() {
-    localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+  async resetToInitial() {
     const initialData = window.INITIAL_FIELD_CALLS || [];
     this.calls = JSON.parse(JSON.stringify(initialData));
     this.enrichCalls();
     this.cleanDuplicateCalls();
+    localStorage.setItem(CACHE_CALLS_KEY, JSON.stringify(this.calls));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
-    localStorage.setItem('KSSMART_LAST_SYNC_TS', String(Date.now()));
     this.notify();
-    this._pushToCloudNow(false);
+    await this._pushToCloudNow();
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards(this.calls, this.settings);
     }

@@ -2347,11 +2347,9 @@
       try {
         var calls = Array.isArray(callsList) 
           ? callsList 
-          : ((localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') 
-              ? [] 
-              : ((window.appStore && Array.isArray(window.appStore.calls)) 
-                  ? window.appStore.calls 
-                  : (window.INITIAL_FIELD_CALLS || [])));
+          : ((window.appStore && Array.isArray(window.appStore.calls)) 
+              ? window.appStore.calls 
+              : []);
         if (!Array.isArray(calls)) calls = [];
 
         var user = (window.authStore && window.authStore.currentUser) || null;
@@ -2449,20 +2447,11 @@
     };
 
     (function() {
-      // Get calls data from wherever it's available
+      // Get calls data from appStore
       function _getCalls() {
-        if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') return [];
         if (window.appStore && Array.isArray(window.appStore.calls)) {
           return window.appStore.calls;
         }
-        var saved = localStorage.getItem('NAGAPATTINAM_FIELD_CALLS_V1');
-        if (saved !== null && saved.trim() !== '') {
-          try {
-            var parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) return parsed;
-          } catch(e) {}
-        }
-        if (window.INITIAL_FIELD_CALLS && window.INITIAL_FIELD_CALLS.length > 0) return window.INITIAL_FIELD_CALLS;
         return [];
       }
 
@@ -3326,37 +3315,20 @@
         var confirmReset = confirm(
           "🔴 CONFIRM SYSTEM DATA RESET:\n\n" +
           "Are you sure you want to reset all system data and delete all call records?\n\n" +
-          "This will wipe your workspace to 0 calls across Mobile, PC and all devices."
+          "This will wipe your centralized database to 0 calls across Mobile, PC and all devices."
         );
         if (!confirmReset) return;
 
-        localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
-        localStorage.setItem('NAGAPATTINAM_FIELD_CALLS_V1', '[]');
-        localStorage.removeItem('fieldCallTracker_settings_v1');
-
-        if (window.appStore) {
-          window.appStore.calls = [];
-          window.appStore.notify();
-          await window.appStore.pushToCloud(true);
-        }
-
-        // Wipe cloud calls so all devices reset to 0
-        try {
-          await fetch('/api/calls', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ calls: [], wasReset: true, timestamp: Date.now() })
-          });
-        } catch(e) {}
-
-        if (typeof window.updateGlobalKpiCards === 'function') {
-          window.updateGlobalKpiCards([], { ratePerKm: 5 });
-        }
-        if (window.tracker) {
-          try { window.tracker.render(); } catch(e) {}
-        }
-        if (window.dashboard && window.appStore) {
-          try { window.dashboard.updateDashboard([], window.appStore.settings); } catch(e) {}
+        if (window.appStore && typeof window.appStore.deleteAllCalls === 'function') {
+          await window.appStore.deleteAllCalls();
+        } else {
+          try {
+            await fetch('/api/calls', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ calls: [], timestamp: Date.now() })
+            });
+          } catch(e) {}
         }
 
         alert("✅ All system data and call records have been wiped to 0 across all devices!");
@@ -3368,18 +3340,11 @@
         var confirmRestore = confirm("🔄 RESTORE BASELINE CALLS:\n\nAre you sure you want to restore the standard 53 baseline field calls (Avg Age: 149 days)?");
         if (!confirmRestore) return;
 
-        localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-        if (window.appStore) {
-          window.appStore.resetToInitial();
-          await window.appStore.pushToCloud();
+        if (window.appStore && typeof window.appStore.resetToInitial === 'function') {
+          await window.appStore.resetToInitial();
         }
-        if (typeof window.updateGlobalKpiCards === 'function') {
-          window.updateGlobalKpiCards(window.appStore ? window.appStore.calls : [], { ratePerKm: 5 });
-        }
-        if (window.tracker) {
-          try { window.tracker.render(); } catch(e) {}
-        }
-        alert("✅ Restored 53 baseline field calls successfully (Avg Ticket Age: 149 days)!");
+
+        alert("✅ Restored 53 baseline field calls successfully!");
         window.location.reload();
       };
 
@@ -3412,22 +3377,14 @@
       // === GET ALL CALLS (from appStore or fallback) ===
       function _getAllCalls() {
         if (window.appStore && Array.isArray(window.appStore.calls)) {
-          if (window.appStore.calls.length > 0) return window.appStore.calls;
-          if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') return [];
+          return window.appStore.calls;
         }
-        if (window.INITIAL_FIELD_CALLS && window.INITIAL_FIELD_CALLS.length > 0) return window.INITIAL_FIELD_CALLS;
         return [];
       }
 
       // === ENSURE DATA IS LOADED INTO APPSTORE ===
       function _ensureData() {
-        if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') return;
-        if (window.appStore && (!window.appStore.calls || window.appStore.calls.length === 0)) {
-          if (window.INITIAL_FIELD_CALLS && window.INITIAL_FIELD_CALLS.length > 0) {
-            window.appStore.calls = JSON.parse(JSON.stringify(window.INITIAL_FIELD_CALLS));
-            if (window.appStore.saveCalls) window.appStore.saveCalls();
-          }
-        }
+        // AppStore connects to Central Database automatically
       }
 
       // === POPULATE FILTER DROPDOWNS ===

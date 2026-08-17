@@ -160,9 +160,6 @@ class WeeklyCallImporter {
 
   isDuplicateCall(newCall) {
     if (!newCall) return false;
-    if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') {
-      return false;
-    }
     let existingCalls = [];
     if (window.appStore && Array.isArray(window.appStore.calls)) {
       existingCalls = window.appStore.calls;
@@ -549,8 +546,6 @@ class WeeklyCallImporter {
       let addedCount = 0;
       let updatedCount = 0;
 
-      localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-
       if (!window.appStore) window.appStore = { calls: [] };
       if (!Array.isArray(window.appStore.calls)) window.appStore.calls = [];
 
@@ -606,8 +601,6 @@ class WeeklyCallImporter {
       if (typeof window.appStore.enrichCalls === 'function') window.appStore.enrichCalls();
       if (typeof window.appStore.cleanDuplicateCalls === 'function') window.appStore.cleanDuplicateCalls();
       if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
-      if (typeof window.appStore.notify === 'function') window.appStore.notify();
-      if (typeof window.appStore._pushToCloudNow === 'function') window.appStore._pushToCloudNow(false);
 
       let msg = `🎉 Successfully processed ${callsToImport.length} call tickets from file!`;
       if (addedCount > 0 && updatedCount > 0) {

@@ -106,24 +106,20 @@ export default {
       const KV_KEY = "central_db_v2";
 
       if (request.method === "GET") {
-        let db = GLOBAL_CALLS_STORE;
+        let db = null;
 
-        if (!db && env.CALLS_KV) {
+        if (env.CALLS_KV) {
           try {
-            const raw = await env.CALLS_KV.get(KV_KEY, { type: "json" });
-            if (raw) {
-              db = raw;
-              GLOBAL_CALLS_STORE = db;
-            }
+            db = await env.CALLS_KV.get(KV_KEY, { type: "json" });
           } catch(e) {}
         }
 
         if (!db) {
-          db = { version: 1, calls: [], updatedAt: Date.now() };
+          db = GLOBAL_CALLS_STORE || { version: 1, calls: [], updatedAt: Date.now() };
         }
 
         const clientVersion = parseInt(url.searchParams.get("v") || "-1");
-        // Fast conditional sync response
+        // Fast conditional sync response if client is already at latest version
         if (clientVersion > 0 && clientVersion === db.version) {
           return new Response(JSON.stringify({ success: true, modified: false, version: db.version }), {
             status: 200,
@@ -157,13 +153,13 @@ export default {
           const newCalls = Array.isArray(body) ? body : (body.calls || []);
 
           let currentVersion = 1;
-          if (GLOBAL_CALLS_STORE && GLOBAL_CALLS_STORE.version) {
-            currentVersion = GLOBAL_CALLS_STORE.version;
-          } else if (env.CALLS_KV) {
+          if (env.CALLS_KV) {
             try {
               const existing = await env.CALLS_KV.get(KV_KEY, { type: "json" });
               if (existing && existing.version) currentVersion = existing.version;
             } catch(e) {}
+          } else if (GLOBAL_CALLS_STORE && GLOBAL_CALLS_STORE.version) {
+            currentVersion = GLOBAL_CALLS_STORE.version;
           }
 
           const nextVersion = currentVersion + 1;
@@ -176,7 +172,7 @@ export default {
           GLOBAL_CALLS_STORE = newDb;
 
           if (env.CALLS_KV) {
-            ctx.waitUntil(env.CALLS_KV.put(KV_KEY, JSON.stringify(newDb)));
+            await env.CALLS_KV.put(KV_KEY, JSON.stringify(newDb));
           }
 
           return new Response(JSON.stringify({

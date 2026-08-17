@@ -1825,15 +1825,18 @@
               </div>
 
               <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.45;">
-                Force purge stale mobile browser caches, PWA offline shells, and re-sync all live calculation engines:
+                Manage your call dataset, purge cached data, or wipe the workspace completely to 0 calls:
               </p>
 
               <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 1.15rem;">
+                <button type="button" onclick="window._resetAllAppData()" class="btn btn-sm" style="background: #dc2626; color: #ffffff; border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" title="Reset all system data and set all KPI cards to 0">
+                  <i class="fas fa-trash-alt"></i> 🗑️ Wipe Workspace to 0 Calls
+                </button>
+                <button type="button" onclick="window._restoreBaselineData()" class="btn btn-sm" style="background: #10b981; color: #ffffff; border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" title="Restore 53 initial baseline field calls">
+                  <i class="fas fa-database"></i> 🔄 Restore 53 Baseline Calls
+                </button>
                 <button type="button" onclick="window.forceClearMobileCache()" class="btn btn-sm btn-primary" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" title="Force purge browser cache and reload latest version">
                   <i class="fas fa-sync-alt"></i> 🔄 Force Sync & Clear Cache
-                </button>
-                <button type="button" onclick="window._resetAllAppData()" class="btn btn-sm" style="background: #dc2626; color: #ffffff; border: none; font-weight: 800; font-size: 0.83rem; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" title="Reset all system data completely">
-                  <i class="fas fa-trash-alt"></i> Reset All Data
                 </button>
               </div>
             </div>
@@ -3353,6 +3356,26 @@
         }
 
         alert("✅ All system data and call records have been reset successfully! Workspace is now clean with 0 calls.");
+        window.location.reload();
+      };
+
+      // === RESTORE STANDARD 53 BASELINE CALLS ===
+      window._restoreBaselineData = async function() {
+        var confirmRestore = confirm("🔄 RESTORE BASELINE CALLS:\n\nAre you sure you want to restore the standard 53 baseline field calls (Avg Age: 149 days)?");
+        if (!confirmRestore) return;
+
+        localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+        if (window.appStore) {
+          window.appStore.resetToInitial();
+          await window.appStore.pushToCloud();
+        }
+        if (typeof window.updateGlobalKpiCards === 'function') {
+          window.updateGlobalKpiCards(window.appStore ? window.appStore.calls : [], { ratePerKm: 5 });
+        }
+        if (window.tracker) {
+          try { window.tracker.render(); } catch(e) {}
+        }
+        alert("✅ Restored 53 baseline field calls successfully (Avg Ticket Age: 149 days)!");
         window.location.reload();
       };
 

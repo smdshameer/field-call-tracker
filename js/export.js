@@ -68,9 +68,10 @@ class FieldCallExporter {
     if (resetDataBtn && !resetDataBtn._hasExporterListener) {
       resetDataBtn._hasExporterListener = true;
       resetDataBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to reset all data back to the original 53 field calls? Any unsaved edits will be overwritten.')) {
-          window.appStore.resetToInitial();
-          alert('Data has been reset back to initial 53 records.');
+        if (typeof window._resetAllAppData === 'function') {
+          window._resetAllAppData();
+        } else if (window.appStore) {
+          window.appStore.deleteAllCalls();
         }
       });
     }

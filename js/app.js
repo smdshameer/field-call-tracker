@@ -684,13 +684,27 @@ class AppStore {
   deleteAllCalls() {
     localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
     this.calls = [];
+    const partitionKey = this.getUserPartitionKey();
+    localStorage.setItem(partitionKey, '[]');
+    localStorage.setItem(STORAGE_KEY, '[]');
     this.saveCalls();
+    this.notify();
+    if (typeof window.updateGlobalKpiCards === 'function') {
+      window.updateGlobalKpiCards([], this.settings);
+    }
   }
 
   resetToInitial() {
     localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-    this.calls = JSON.parse(JSON.stringify(window.INITIAL_FIELD_CALLS || []));
+    const initialData = window.INITIAL_FIELD_CALLS || [];
+    this.calls = JSON.parse(JSON.stringify(initialData));
+    this.enrichCalls();
+    this.cleanDuplicateCalls();
     this.saveCalls();
+    this.notify();
+    if (typeof window.updateGlobalKpiCards === 'function') {
+      window.updateGlobalKpiCards(this.calls, this.settings);
+    }
   }
 }
 

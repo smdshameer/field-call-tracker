@@ -1181,10 +1181,7 @@ textarea.form-control {
 /* Strictly Enforced Responsive Desktop vs Mobile Media Queries */
 @media (min-width: 769px) {
   .sidebar-toggle-btn {
-    display: none !important;
-  }
-  .sidebar-overlay {
-    display: none !important;
+    display: inline-flex !important;
   }
   .nav-actions {
     display: flex !important;
@@ -1617,27 +1614,28 @@ textarea.form-control {
 
 /* Sidebar Off-Canvas Navigation Drawer - Ultra Smooth 60fps GPU Accelerated */
 .sidebar-toggle-btn {
-  display: none !important;
+  display: inline-flex !important;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--primary);
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   align-items: center;
   justify-content: center;
   font-size: 1.15rem;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: all 0.2s ease;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
-@media (max-width: 600px) {
-  .sidebar-toggle-btn {
-    display: inline-flex !important;
-  }
+.sidebar-toggle-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  transform: translateY(-1px);
 }
 
 .sidebar-overlay {

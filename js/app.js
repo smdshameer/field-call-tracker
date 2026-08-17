@@ -34,7 +34,6 @@ class AppStore {
 
   loadUserData() {
     const partitionKey = STORAGE_KEY;
-    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
 
     // 1. Load User Settings
     const savedSettings = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('fieldCallTracker_settings_v1');
@@ -50,6 +49,16 @@ class AppStore {
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
     // 2. Load Centralized Data & Auto-upgrade Stale Caches
+    const CURRENT_VERSION = '2026_08_17_V7_RESTORE_53';
+    const savedVersion = localStorage.getItem('KSSMART_DATASET_VERSION');
+
+    // If version changed, clear any previous test reset flag and upgrade
+    if (savedVersion !== CURRENT_VERSION) {
+      localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+      localStorage.setItem('KSSMART_DATASET_VERSION', CURRENT_VERSION);
+    }
+
+    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
     if (isExplicitlyReset) {
       this.calls = [];
       localStorage.setItem(STORAGE_KEY, '[]');
@@ -60,25 +69,20 @@ class AppStore {
       return;
     }
 
-    const CURRENT_VERSION = '2026_08_17_V6_53_CALLS';
-    const savedVersion = localStorage.getItem('KSSMART_DATASET_VERSION');
     let loadedCalls = null;
-
-    if (savedVersion === CURRENT_VERSION) {
-      const centralCallsStr = localStorage.getItem(STORAGE_KEY);
-      if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
-        try {
-          const parsed = JSON.parse(centralCallsStr);
-          if (Array.isArray(parsed) && parsed.length >= 53) {
-            loadedCalls = parsed;
-          }
-        } catch (e) {
-          console.error('Error loading centralized calls:', e);
+    const centralCallsStr = localStorage.getItem(STORAGE_KEY);
+    if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
+      try {
+        const parsed = JSON.parse(centralCallsStr);
+        if (Array.isArray(parsed) && parsed.length >= 53) {
+          loadedCalls = parsed;
         }
+      } catch (e) {
+        console.error('Error loading centralized calls:', e);
       }
     }
 
-    // If version is missing/older, or storage had old 45 calls:
+    // If version is missing/older, or storage had old 45 calls / 0 calls:
     if (loadedCalls !== null) {
       this.calls = loadedCalls;
     } else {

@@ -20,24 +20,10 @@ class AppStore {
   }
 
   getUserPartitionKey() {
-    try {
-      const user = (window.authStore && window.authStore.currentUser) || null;
-      if (user) {
-        const userTag = user.empId || user.contactNo || user.id || 'general';
-        return `KSSMART_CALLS_USER_${String(userTag).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-      }
-    } catch (e) {}
     return STORAGE_KEY;
   }
 
   getUserSettingsKey() {
-    try {
-      const user = (window.authStore && window.authStore.currentUser) || null;
-      if (user) {
-        const userTag = user.empId || user.contactNo || user.id || 'general';
-        return `KSSMART_SETTINGS_USER_${String(userTag).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-      }
-    } catch (e) {}
     return SETTINGS_KEY;
   }
 
@@ -47,11 +33,11 @@ class AppStore {
   }
 
   loadUserData() {
-    const partitionKey = this.getUserPartitionKey();
-    const settingsKey = this.getUserSettingsKey();
+    const partitionKey = STORAGE_KEY;
+    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
 
     // 1. Load User Settings
-    const savedSettings = localStorage.getItem(settingsKey) || localStorage.getItem(SETTINGS_KEY);
+    const savedSettings = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('fieldCallTracker_settings_v1');
     if (savedSettings) {
       try {
         this.settings = { ...defaultSettings, ...JSON.parse(savedSettings) };
@@ -63,16 +49,9 @@ class AppStore {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
-    // Automatic Dataset Version Check: Clears stale old PC development caches & loads canonical 53 calls
-    const DATASET_VERSION = '2026_08_17_V4';
-    const partitionVersionKey = `KSSMART_VERSION_${partitionKey}`;
-    const partitionVersion = localStorage.getItem(partitionVersionKey);
-    const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
-
-    // 2. Load User-Specific Partition Data (Zero Data Loss Architecture)
+    // 2. Load Centralized Data
     if (isExplicitlyReset) {
       this.calls = [];
-      localStorage.setItem(partitionKey, '[]');
       localStorage.setItem(STORAGE_KEY, '[]');
       this.notify();
       if (typeof window.updateGlobalKpiCards === 'function') {
@@ -82,18 +61,15 @@ class AppStore {
     }
 
     let loadedCalls = null;
-
-    if (partitionVersion === DATASET_VERSION) {
-      const userSpecificCalls = localStorage.getItem(partitionKey);
-      if (userSpecificCalls !== null && userSpecificCalls.trim() !== '') {
-        try {
-          const parsed = JSON.parse(userSpecificCalls);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            loadedCalls = parsed;
-          }
-        } catch (e) {
-          console.error('Error loading user partition calls:', e);
+    const centralCallsStr = localStorage.getItem(STORAGE_KEY);
+    if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
+      try {
+        const parsed = JSON.parse(centralCallsStr);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedCalls = parsed;
         }
+      } catch (e) {
+        console.error('Error loading centralized calls:', e);
       }
     }
 
@@ -101,15 +77,12 @@ class AppStore {
     if (loadedCalls !== null) {
       this.calls = loadedCalls;
     } else {
-      console.log(`[APP] Initializing partition ${partitionKey} with canonical 53 calls (avg age: 149 days)...`);
+      console.log('[APP] Initializing with canonical 53 calls (avg age: 149 days)...');
       const initialData = window.INITIAL_FIELD_CALLS || [];
       this.calls = JSON.parse(JSON.stringify(initialData));
-      try {
-        localStorage.setItem(partitionVersionKey, DATASET_VERSION);
-      } catch(e) {}
     }
 
-    // Ensure all 53 canonical baseline calls are included with full parity
+    // Ensure all 53 canonical baseline calls are present with full parity
     const initialData = window.INITIAL_FIELD_CALLS || [];
     if (initialData.length > 0) {
       const existingMap = new Map();

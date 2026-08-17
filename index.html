@@ -2345,8 +2345,14 @@
     // Universal Global KPI Cards Updater (Mobile & Desktop)
     window.updateGlobalKpiCards = function(callsList, settingsObj) {
       try {
-        var calls = callsList || (window.appStore && window.appStore.calls) || window.INITIAL_FIELD_CALLS || [];
-        if (!Array.isArray(calls)) return;
+        var calls = Array.isArray(callsList) 
+          ? callsList 
+          : ((localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') 
+              ? [] 
+              : ((window.appStore && Array.isArray(window.appStore.calls)) 
+                  ? window.appStore.calls 
+                  : (window.INITIAL_FIELD_CALLS || [])));
+        if (!Array.isArray(calls)) calls = [];
 
         var user = (window.authStore && window.authStore.currentUser) || null;
         var userRate = (user && user.conveyanceRate) ? parseFloat(user.conveyanceRate) : null;

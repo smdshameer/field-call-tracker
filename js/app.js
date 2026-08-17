@@ -108,99 +108,129 @@ class AppStore {
       } catch (e) {}
     }
 
-    // 2. Refresh on window focus and tab visibility change
-    window.addEventListener('focus', () => this.fetchCloudCalls(false));
+    // 2. High-priority mobile wakeup triggers (instant sync on app open, tab switch, unlock, or touch)
+    window.addEventListener('focus', () => this.fetchCloudCalls(true));
+    window.addEventListener('pageshow', () => this.fetchCloudCalls(true));
+    window.addEventListener('online', () => this.fetchCloudCalls(true));
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        this.fetchCloudCalls(false);
+        this.fetchCloudCalls(true);
       }
     });
 
-    // 3. Regular background cloud sync heartbeat (every 5 seconds)
+    // Touch/interaction wakeup for mobile: when user taps or scrolls, check cloud if >2s since last check
+    let lastTouchSync = 0;
+    const touchWakeup = () => {
+      const now = Date.now();
+      if (now - lastTouchSync > 2000) {
+        lastTouchSync = now;
+        this.fetchCloudCalls(false);
+      }
+    };
+    window.addEventListener('pointerdown', touchWakeup, { passive: true });
+    window.addEventListener('scroll', touchWakeup, { passive: true });
+
+    // 3. Fast background cloud sync heartbeat (every 2.5 seconds)
     if (this._cloudSyncInterval) clearInterval(this._cloudSyncInterval);
     this._cloudSyncInterval = setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         this.fetchCloudCalls(false);
       }
-    }, 5000);
+    }, 2500);
 
-    // 4. Initial cloud pull
-    setTimeout(() => this.fetchCloudCalls(true), 200);
+    // 4. Immediate initial cloud pull on startup
+    this.fetchCloudCalls(true);
+    setTimeout(() => this.fetchCloudCalls(true), 500);
   }
 
   async fetchCloudCalls(force = false) {
     if (this._isSyncingCloud) return;
     this._isSyncingCloud = true;
 
+    // Timeout safety with AbortController to prevent mobile network lockups
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2800);
+
     try {
-      const res = await fetch('/api/calls?t=' + Date.now(), { cache: 'no-store' });
+      const res = await fetch('/api/calls?t=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
       if (!res.ok) return;
 
       const data = await res.json();
       if (!data || typeof data !== 'object') return;
 
       const cloudTimestamp = data.timestamp || 0;
-      const localTimestamp = parseInt(localStorage.getItem('KSSMART_LAST_SYNC_TS') || '0');
 
       // 1. Cloud was explicitly wiped to 0 calls
       if (data.wasReset === true) {
-        localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
-        localStorage.setItem(STORAGE_KEY, '[]');
-        localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
-        this.calls = [];
-        this.notify();
-        if (typeof window.updateGlobalKpiCards === 'function') {
-          window.updateGlobalKpiCards([], this.settings);
-        }
-        if (window.tracker && typeof window.tracker.render === 'function') {
-          try { window.tracker.render(); } catch(e) {}
-        }
-        if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
-          try { window.dashboard.updateDashboard([], this.settings); } catch(e) {}
-        }
-        if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
-          try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
-        }
-        return;
-      }
-
-      // 2. Cloud has call data → download if cloud is newer or local is empty
-      if (Array.isArray(data.calls) && data.calls.length > 0) {
-        localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-        if (cloudTimestamp >= localTimestamp || this.calls.length === 0 || force) {
-          const serverStr = JSON.stringify(data.calls);
-          const localStr = JSON.stringify(this.calls);
-          if (serverStr !== localStr) {
-            console.log('[CLOUD SYNC] Downloading ' + data.calls.length + ' calls from cloud (cloud ts=' + cloudTimestamp + ', local ts=' + localTimestamp + ')');
-            this.calls = data.calls;
-            this.enrichCalls();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
-            localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
-            this.notify();
-            if (typeof window.updateGlobalKpiCards === 'function') {
-              window.updateGlobalKpiCards(this.calls, this.settings);
-            }
-            if (window.tracker && typeof window.tracker.render === 'function') {
-              try { window.tracker.render(); } catch(e) {}
-            }
-            if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
-              try { window.dashboard.updateDashboard(this.calls, this.settings); } catch(e) {}
-            }
-            if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
-              try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
-            }
+        if (this.calls.length > 0 || localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
+          console.log('[CLOUD SYNC] Cloud is wiped to 0. Syncing 0 state to this device.');
+          localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
+          localStorage.setItem(STORAGE_KEY, '[]');
+          localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
+          this.calls = [];
+          this.notify();
+          if (typeof window.updateGlobalKpiCards === 'function') {
+            window.updateGlobalKpiCards([], this.settings);
+          }
+          if (window.tracker && typeof window.tracker.render === 'function') {
+            try { window.tracker.render(); } catch(e) {}
+          }
+          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
+            try { window.dashboard.updateDashboard([], this.settings); } catch(e) {}
+          }
+          if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
+            try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
           }
         }
         return;
       }
 
-      // 3. Cloud is empty/null (cold start on a different edge node) → push local data to seed cloud
+      // 2. Cloud has call records → synchronize immediately
+      if (Array.isArray(data.calls) && data.calls.length > 0) {
+        localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+        const serverStr = JSON.stringify(data.calls);
+        const localStr = JSON.stringify(this.calls);
+
+        if (serverStr !== localStr || force) {
+          console.log('[CLOUD SYNC] Live sync updated: ' + data.calls.length + ' calls received from Cloudflare KV.');
+          this.calls = data.calls;
+          this.enrichCalls();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+          localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
+          this.notify();
+          if (typeof window.updateGlobalKpiCards === 'function') {
+            window.updateGlobalKpiCards(this.calls, this.settings);
+          }
+          if (window.tracker && typeof window.tracker.render === 'function') {
+            try { window.tracker.render(); } catch(e) {}
+          }
+          if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
+            try { window.dashboard.updateDashboard(this.calls, this.settings); } catch(e) {}
+          }
+          if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
+            try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
+          }
+        }
+        return;
+      }
+
+      // 3. Cloud is empty and not explicitly reset → seed cloud from local baseline
       if (this.calls.length > 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
-        console.log('[CLOUD SYNC] Cloud is empty. Seeding cloud with ' + this.calls.length + ' local calls.');
+        console.log('[CLOUD SYNC] Initial cloud seeding with ' + this.calls.length + ' calls.');
         this._pushToCloudNow(false);
       }
     } catch (e) {
-      console.warn('[CLOUD SYNC] Sync notice:', e.message);
+      clearTimeout(timeoutId);
+      // Suppress network abort errors on fast tab switching
+      if (e.name !== 'AbortError') {
+        console.warn('[CLOUD SYNC Notice]', e.message);
+      }
     } finally {
       this._isSyncingCloud = false;
     }

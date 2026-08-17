@@ -159,99 +159,61 @@ class AppStore {
   async fetchCloudCalls(force = false) {
     if (this._isSyncingCloud) return;
     this._isSyncingCloud = true;
-    this.updateCloudSyncBadge('syncing');
 
     try {
-      const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
-      if (isExplicitlyReset && !force) {
-        this.calls = [];
-        this.notify();
-        this.updateCloudSyncBadge('synced');
-        return;
-      }
-
       const res = await fetch('/api/calls?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data && Array.isArray(data.calls)) {
-          if (data.calls.length === 0 && isExplicitlyReset) {
-            this.calls = [];
-            this.notify();
-            this.updateCloudSyncBadge('synced');
+        if (data && typeof data === 'object') {
+          // 1. If Cloud was explicitly wiped to 0 calls
+          if (data.wasReset === true || (Array.isArray(data.calls) && data.calls.length === 0 && data.wasReset !== false)) {
+            const isLocalAlreadyEmpty = this.calls.length === 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
+            if (!isLocalAlreadyEmpty) {
+              console.log('[CLOUD SYNC] Cloud was wiped to 0 calls. Syncing 0 state to this device.');
+              localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
+              this.calls = [];
+              localStorage.setItem(STORAGE_KEY, '[]');
+              this.notify();
+              if (typeof window.updateGlobalKpiCards === 'function') {
+                window.updateGlobalKpiCards([], this.settings);
+              }
+            }
             return;
           }
 
-          if (data.calls.length > 0 && !isExplicitlyReset) {
-            let hasChanges = false;
+          // 2. If Cloud has synchronized call records
+          if (Array.isArray(data.calls) && data.calls.length > 0) {
+            localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
             
-            if (this.calls.length === 0 || force) {
+            const serverStr = JSON.stringify(data.calls);
+            const localStr = JSON.stringify(this.calls);
+
+            if (serverStr !== localStr || force) {
               this.calls = data.calls;
-              hasChanges = true;
-            } else {
-              const serverMap = new Map();
-              data.calls.forEach(sc => serverMap.set(String(sc.id), sc));
-
-              this.calls.forEach((localCall, idx) => {
-                const sc = serverMap.get(String(localCall.id));
-                if (sc) {
-                  const distDiff = String(sc.distanceKm || '') !== String(localCall.distanceKm || '');
-                  const statusDiff = String(sc.status || '').toLowerCase() !== String(localCall.status || '').toLowerCase();
-                  const costDiff = String(sc.conveyanceCost || '') !== String(localCall.conveyanceCost || '');
-                  const actionDiff = String(sc.actionTaken || '') !== String(localCall.actionTaken || '');
-                  const closedDiff = String(sc.dateClosed || '') !== String(localCall.dateClosed || '');
-                  const visitedDiff = String(sc.visitedBy || '') !== String(localCall.visitedBy || '');
-
-                  if (distDiff || statusDiff || costDiff || actionDiff || closedDiff || visitedDiff) {
-                    this.calls[idx] = { ...localCall, ...sc };
-                    hasChanges = true;
-                  }
-                  serverMap.delete(String(localCall.id));
-                }
-              });
-
-              // Append any newly created calls from other devices
-              serverMap.forEach(newSc => {
-                this.calls.push(newSc);
-                hasChanges = true;
-              });
-            }
-
-            if (hasChanges) {
               this.enrichCalls();
-              const partitionKey = this.getUserPartitionKey();
-              const dataStr = JSON.stringify(this.calls);
-              localStorage.setItem(partitionKey, dataStr);
-              localStorage.setItem(STORAGE_KEY, dataStr);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
               this.notify();
+              if (typeof window.updateGlobalKpiCards === 'function') {
+                window.updateGlobalKpiCards(this.calls, this.settings);
+              }
             }
-          }
-          this.updateCloudSyncBadge('synced');
-        } else {
-          // Cloud has no calls yet - push local calls to initialize cloud!
-          if (this.calls && this.calls.length > 0) {
-            this.pushToCloud();
-          } else {
-            this.updateCloudSyncBadge('synced');
           }
         }
-      } else {
-        this.updateCloudSyncBadge('offline');
       }
     } catch (e) {
-      console.warn('[CLOUD SYNC] Background fetch notice:', e.message);
-      this.updateCloudSyncBadge('offline');
+      console.warn('[CLOUD SYNC] Sync notice:', e.message);
     } finally {
       this._isSyncingCloud = false;
     }
   }
 
-  async pushToCloud() {
-    this.updateCloudSyncBadge('syncing');
+  async pushToCloud(isExplicitReset = false) {
     try {
+      const wasReset = isExplicitReset || (this.calls.length === 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true');
       const payload = {
         calls: this.calls,
-        timestamp: Date.now(),
-        user: (window.authStore && window.authStore.currentUser) ? window.authStore.currentUser.name : 'Unknown'
+        wasReset: wasReset,
+        timestamp: Date.now()
       };
       const res = await fetch('/api/calls', {
         method: 'POST',
@@ -259,16 +221,12 @@ class AppStore {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        this.updateCloudSyncBadge('synced');
         if (this.broadcastChannel) {
-          this.broadcastChannel.postMessage({ type: 'CALLS_MUTATED', timestamp: Date.now() });
+          this.broadcastChannel.postMessage({ type: 'CALLS_MUTATED', wasReset: wasReset, timestamp: Date.now() });
         }
-      } else {
-        this.updateCloudSyncBadge('offline');
       }
     } catch (e) {
       console.warn('[CLOUD SYNC] Push deferred:', e.message);
-      this.updateCloudSyncBadge('offline');
     }
   }
 
@@ -649,11 +607,9 @@ class AppStore {
   deleteAllCalls() {
     localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
     this.calls = [];
-    const partitionKey = this.getUserPartitionKey();
-    localStorage.setItem(partitionKey, '[]');
     localStorage.setItem(STORAGE_KEY, '[]');
-    this.saveCalls();
     this.notify();
+    this.pushToCloud(true);
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards([], this.settings);
     }
@@ -665,8 +621,9 @@ class AppStore {
     this.calls = JSON.parse(JSON.stringify(initialData));
     this.enrichCalls();
     this.cleanDuplicateCalls();
-    this.saveCalls();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
     this.notify();
+    this.pushToCloud(false);
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards(this.calls, this.settings);
     }

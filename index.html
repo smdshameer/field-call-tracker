@@ -3315,7 +3315,7 @@
         var confirmReset = confirm(
           "🔴 CONFIRM SYSTEM DATA RESET:\n\n" +
           "Are you sure you want to reset all system data and delete all call records?\n\n" +
-          "This will clear all ticket records, custom engineer settings, cached local storage, and reset your workspace to 0 calls."
+          "This will wipe your workspace to 0 calls across Mobile, PC and all devices."
         );
         if (!confirmReset) return;
 
@@ -3324,13 +3324,9 @@
         localStorage.removeItem('fieldCallTracker_settings_v1');
 
         if (window.appStore) {
-          const userKey = window.appStore.getUserPartitionKey();
-          if (userKey) {
-            localStorage.setItem(userKey, '[]');
-            localStorage.setItem(`KSSMART_VERSION_${userKey}`, '2026_08_17_V4');
-          }
           window.appStore.calls = [];
-          if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
+          window.appStore.notify();
+          await window.appStore.pushToCloud(true);
         }
 
         // Wipe cloud calls so all devices reset to 0
@@ -3352,7 +3348,7 @@
           try { window.dashboard.updateDashboard([], window.appStore.settings); } catch(e) {}
         }
 
-        alert("✅ All system data and call records have been reset successfully! Workspace is now clean with 0 calls.");
+        alert("✅ All system data and call records have been wiped to 0 across all devices!");
         window.location.reload();
       };
 

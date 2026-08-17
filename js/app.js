@@ -102,7 +102,7 @@ class AppStore {
         this.broadcastChannel = new BroadcastChannel('kssmart_field_sync');
         this.broadcastChannel.onmessage = (msg) => {
           if (msg.data && msg.data.type === 'CALLS_MUTATED') {
-            this.fetchCloudCalls(false);
+            this.fetchCloudCalls(true);
           }
         };
       } catch (e) {}
@@ -124,8 +124,8 @@ class AppStore {
       }
     }, 5000);
 
-    // 4. Initial cloud pull
-    setTimeout(() => this.fetchCloudCalls(false), 300);
+    // 4. Initial cloud pull (seed cloud if empty)
+    setTimeout(() => this.fetchCloudCalls(true), 300);
   }
 
   async fetchCloudCalls(force = false) {
@@ -134,43 +134,55 @@ class AppStore {
 
     try {
       const res = await fetch('/api/calls?t=' + Date.now(), { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data === 'object') {
-          // 1. If Cloud was explicitly wiped to 0 calls
-          if (data.wasReset === true || (Array.isArray(data.calls) && data.calls.length === 0 && data.wasReset !== false)) {
-            const isLocalAlreadyEmpty = this.calls.length === 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
-            if (!isLocalAlreadyEmpty) {
-              console.log('[CLOUD SYNC] Cloud was wiped to 0 calls. Syncing 0 state to this device.');
-              localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
-              this.calls = [];
-              localStorage.setItem(STORAGE_KEY, '[]');
-              this.notify();
-              if (typeof window.updateGlobalKpiCards === 'function') {
-                window.updateGlobalKpiCards([], this.settings);
-              }
-            }
-            return;
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (!data || typeof data !== 'object') return;
+
+      const cloudTimestamp = data.timestamp || 0;
+      const localTimestamp = parseInt(localStorage.getItem('KSSMART_LAST_SYNC_TS') || '0');
+
+      // 1. Cloud was explicitly wiped to 0 calls
+      if (data.wasReset === true) {
+        if (this.calls.length > 0 || localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
+          console.log('[CLOUD SYNC] Cloud was wiped. Syncing 0-state to this device.');
+          localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
+          this.calls = [];
+          localStorage.setItem(STORAGE_KEY, '[]');
+          localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
+          this.notify();
+          if (typeof window.updateGlobalKpiCards === 'function') {
+            window.updateGlobalKpiCards([], this.settings);
           }
+        }
+        return;
+      }
 
-          // 2. If Cloud has synchronized call records
-          if (Array.isArray(data.calls) && data.calls.length > 0) {
-            localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-            
-            const serverStr = JSON.stringify(data.calls);
-            const localStr = JSON.stringify(this.calls);
-
-            if (serverStr !== localStr || force) {
-              this.calls = data.calls;
-              this.enrichCalls();
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
-              this.notify();
-              if (typeof window.updateGlobalKpiCards === 'function') {
-                window.updateGlobalKpiCards(this.calls, this.settings);
-              }
+      // 2. Cloud has call data → download if cloud is newer or local is empty
+      if (Array.isArray(data.calls) && data.calls.length > 0) {
+        localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+        if (cloudTimestamp >= localTimestamp || this.calls.length === 0 || force) {
+          const serverStr = JSON.stringify(data.calls);
+          const localStr = JSON.stringify(this.calls);
+          if (serverStr !== localStr) {
+            console.log('[CLOUD SYNC] Downloading ' + data.calls.length + ' calls from cloud (cloud ts=' + cloudTimestamp + ', local ts=' + localTimestamp + ')');
+            this.calls = data.calls;
+            this.enrichCalls();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+            localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
+            this.notify();
+            if (typeof window.updateGlobalKpiCards === 'function') {
+              window.updateGlobalKpiCards(this.calls, this.settings);
             }
           }
         }
+        return;
+      }
+
+      // 3. Cloud is empty/null (cold start on a different edge node) → push local data to seed cloud
+      if (this.calls.length > 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
+        console.log('[CLOUD SYNC] Cloud is empty. Seeding cloud with ' + this.calls.length + ' local calls.');
+        this._pushToCloudNow(false);
       }
     } catch (e) {
       console.warn('[CLOUD SYNC] Sync notice:', e.message);
@@ -180,12 +192,19 @@ class AppStore {
   }
 
   async pushToCloud(isExplicitReset = false) {
+    // Debounce: coalesce rapid saves into a single cloud push after 500ms
+    if (this._pushDebounce) clearTimeout(this._pushDebounce);
+    this._pushDebounce = setTimeout(() => this._pushToCloudNow(isExplicitReset), 500);
+  }
+
+  async _pushToCloudNow(isExplicitReset = false) {
     try {
       const wasReset = isExplicitReset || (this.calls.length === 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true');
+      const timestamp = Date.now();
       const payload = {
         calls: this.calls,
         wasReset: wasReset,
-        timestamp: Date.now()
+        timestamp: timestamp
       };
       const res = await fetch('/api/calls', {
         method: 'POST',
@@ -193,8 +212,9 @@ class AppStore {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        localStorage.setItem('KSSMART_LAST_SYNC_TS', String(timestamp));
         if (this.broadcastChannel) {
-          this.broadcastChannel.postMessage({ type: 'CALLS_MUTATED', wasReset: wasReset, timestamp: Date.now() });
+          this.broadcastChannel.postMessage({ type: 'CALLS_MUTATED', wasReset: wasReset, timestamp: timestamp });
         }
       }
     } catch (e) {
@@ -205,19 +225,16 @@ class AppStore {
   updateCloudSyncBadge(status) {}
 
   saveCalls() {
-    const partitionKey = this.getUserPartitionKey();
     const dataStr = JSON.stringify(this.calls);
-
     try {
-      localStorage.setItem(partitionKey, dataStr);
       localStorage.setItem(STORAGE_KEY, dataStr);
       this.createAutoBackup();
     } catch (e) {
       console.warn('LocalStorage save warning:', e);
     }
-
     this.notify();
-    this.pushToCloud();
+    // Auto-push every local save to cloud for cross-device sync
+    this.pushToCloud(false);
   }
 
   enrichCalls() {
@@ -580,8 +597,9 @@ class AppStore {
     localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
     this.calls = [];
     localStorage.setItem(STORAGE_KEY, '[]');
+    localStorage.setItem('KSSMART_LAST_SYNC_TS', String(Date.now()));
     this.notify();
-    this.pushToCloud(true);
+    this._pushToCloudNow(true);
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards([], this.settings);
     }
@@ -594,8 +612,9 @@ class AppStore {
     this.enrichCalls();
     this.cleanDuplicateCalls();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+    localStorage.setItem('KSSMART_LAST_SYNC_TS', String(Date.now()));
     this.notify();
-    this.pushToCloud(false);
+    this._pushToCloudNow(false);
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards(this.calls, this.settings);
     }

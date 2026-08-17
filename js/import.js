@@ -499,17 +499,18 @@ class WeeklyCallImporter {
 
     if (!previewBody) return;
 
+    const totalCount = this.parsedCalls.length;
     const newCallsCount = this.parsedCalls.filter(c => !c.isDuplicate).length;
+    const updateCallsCount = totalCount - newCallsCount;
 
     let html = '';
     this.parsedCalls.forEach((c, idx) => {
-      const rowStyle = c.isDuplicate ? 'opacity: 0.55; background: rgba(239, 68, 68, 0.05);' : '';
       const statusBadge = c.isDuplicate ?
-        `<span class="badge" style="font-size: 0.65rem; background: var(--status-incomplete-bg); color: var(--status-incomplete-text);"><i class="fas fa-ban"></i> Existing (Will Skip)</span>` :
+        `<span class="badge" style="font-size: 0.65rem; background: var(--status-in-progress-bg); color: var(--status-in-progress-text);"><i class="fas fa-sync-alt"></i> Update Existing</span>` :
         `<span class="badge" style="font-size: 0.65rem; background: var(--status-completed-bg); color: var(--status-completed-text);"><i class="fas fa-check"></i> New Ticket</span>`;
 
       html += `
-        <tr style="${rowStyle}">
+        <tr>
           <td>${idx + 1}</td>
           <td style="font-weight: 700;">${c.schoolName}</td>
           <td class="font-mono">${c.udise}</td>
@@ -524,39 +525,87 @@ class WeeklyCallImporter {
     if (previewContainer) previewContainer.style.display = 'block';
     if (confirmBtn) {
       confirmBtn.style.display = 'inline-flex';
-      confirmBtn.disabled = newCallsCount === 0;
-      confirmBtn.innerHTML = `<i class="fas fa-file-import"></i> Confirm & Import ${newCallsCount} New Call(s)`;
+      confirmBtn.disabled = totalCount === 0;
+      confirmBtn.innerHTML = `<i class="fas fa-file-import"></i> Confirm & Import ${totalCount} Call(s)`;
     }
   }
 
   confirmImport() {
-    const newCallsToImport = this.parsedCalls.filter(c => !c.isDuplicate);
-    const skippedCount = this.parsedCalls.length - newCallsToImport.length;
-
-    if (newCallsToImport.length === 0) {
-      alert('⚠️ All calls in this file already exist in your tracker database! No duplicate entries were added.');
+    if (!this.parsedCalls || this.parsedCalls.length === 0) {
+      alert('⚠️ No valid calls to import. Please choose an Excel file first.');
       return;
     }
 
     let addedCount = 0;
-    newCallsToImport.forEach(callData => {
-      const cleanData = { ...callData };
-      delete cleanData.isDuplicate;
-      if (window.appStore && typeof window.appStore.addCall === 'function') {
-        window.appStore.addCall(cleanData);
-      } else {
-        if (!window.appStore) window.appStore = { calls: [] };
-        if (!Array.isArray(window.appStore.calls)) window.appStore.calls = [];
-        cleanData.id = window.appStore.calls.length ? Math.max(...window.appStore.calls.map(c => Number(c.id) || 0)) + 1 : 1;
-        window.appStore.calls.unshift(cleanData);
-        if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
-      }
-      addedCount++;
-    });
+    let updatedCount = 0;
 
-    let msg = `🎉 Successfully imported ${addedCount} new call ticket(s) into your tracker!`;
-    if (skippedCount > 0) {
-      msg += `\n\nℹ️ Note: ${skippedCount} existing duplicate call(s) were automatically skipped to avoid double entries.`;
+    localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+
+    if (!window.appStore) window.appStore = { calls: [] };
+    if (!Array.isArray(window.appStore.calls)) window.appStore.calls = [];
+
+    // If tracker is empty, directly load all parsed calls
+    if (window.appStore.calls.length === 0) {
+      this.parsedCalls.forEach((callData, idx) => {
+        const cleanData = { ...callData };
+        delete cleanData.isDuplicate;
+        cleanData.id = idx + 1;
+        window.appStore.calls.push(cleanData);
+        addedCount++;
+      });
+    } else {
+      // Merge & Import: Match by UDISE + School Name / Issue
+      this.parsedCalls.forEach(callData => {
+        const cleanData = { ...callData };
+        delete cleanData.isDuplicate;
+
+        const cleanUdise = String(cleanData.udise || '').trim();
+        const cleanSchool = String(cleanData.schoolName || '').trim().toLowerCase();
+        const cleanIssue = String(cleanData.issue || '').trim().toLowerCase();
+
+        const existingIdx = window.appStore.calls.findIndex(c => {
+          if (!c) return false;
+          const existUdise = String(c.udise || '').trim();
+          const existSchool = String(c.schoolName || '').trim().toLowerCase();
+          const existIssue = String(c.issue || '').trim().toLowerCase();
+          return existUdise === cleanUdise && (existSchool === cleanSchool || existIssue === cleanIssue);
+        });
+
+        if (existingIdx !== -1) {
+          const existing = window.appStore.calls[existingIdx];
+          window.appStore.calls[existingIdx] = {
+            ...cleanData,
+            id: existing.id,
+            distanceKm: (existing.distanceKm !== null && existing.distanceKm !== undefined) ? existing.distanceKm : cleanData.distanceKm,
+            conveyanceCost: (existing.conveyanceCost !== null && existing.conveyanceCost !== undefined) ? existing.conveyanceCost : cleanData.conveyanceCost,
+            status: (existing.status && existing.status !== 'Not Started') ? existing.status : cleanData.status,
+            dateClosed: existing.dateClosed || cleanData.dateClosed,
+            actionTaken: existing.actionTaken || cleanData.actionTaken,
+            visitedBy: existing.visitedBy || cleanData.visitedBy
+          };
+          updatedCount++;
+        } else {
+          const maxId = window.appStore.calls.length ? Math.max(...window.appStore.calls.map(c => Number(c.id) || 0)) : 0;
+          cleanData.id = maxId + 1;
+          window.appStore.calls.unshift(cleanData);
+          addedCount++;
+        }
+      });
+    }
+
+    if (typeof window.appStore.enrichCalls === 'function') window.appStore.enrichCalls();
+    if (typeof window.appStore.cleanDuplicateCalls === 'function') window.appStore.cleanDuplicateCalls();
+    if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
+    if (typeof window.appStore.notify === 'function') window.appStore.notify();
+    if (typeof window.appStore.pushToCloud === 'function') window.appStore.pushToCloud(false);
+
+    let msg = `🎉 Successfully processed ${this.parsedCalls.length} call tickets from file!`;
+    if (addedCount > 0 && updatedCount > 0) {
+      msg += `\n\n• ${addedCount} New call tickets added\n• ${updatedCount} Existing call records refreshed and updated`;
+    } else if (addedCount > 0) {
+      msg += `\n\n• ${addedCount} New call tickets added into your tracker!`;
+    } else if (updatedCount > 0) {
+      msg += `\n\n• ${updatedCount} Existing call records refreshed and updated!`;
     }
     alert(msg);
 
@@ -570,6 +619,9 @@ class WeeklyCallImporter {
     }
     if (window.dashboard && typeof window.dashboard.updateDashboard === 'function' && window.appStore) {
       window.dashboard.updateDashboard(window.appStore.calls, window.appStore.settings);
+    }
+    if (typeof window.updateGlobalKpiCards === 'function') {
+      window.updateGlobalKpiCards(window.appStore.calls, window.appStore.settings);
     }
   }
 }

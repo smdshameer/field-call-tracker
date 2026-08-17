@@ -920,6 +920,16 @@
 
         <div class="sidebar-menu-heading" style="margin-top: 0.75rem;">TOOLS & MANAGEMENT</div>
 
+        <button type="button" onclick="window.openModalFromSidebar(function(){ window.adminViews.openAdminPortal(); })" class="sidebar-menu-btn" style="border: 1.5px solid #1e3a8a; background: rgba(30, 58, 138, 0.06);">
+          <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #ffffff; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
+            <i class="fas fa-shield-halved"></i>
+          </div>
+          <div class="sidebar-btn-text">
+            <span class="sidebar-btn-title" style="color: #1e3a8a; font-weight: 800;">Statewide Admin Portal</span>
+            <span class="sidebar-btn-sub">District Allocations & Asset Control</span>
+          </div>
+        </button>
+
         <button type="button" onclick="window.openModalFromSidebar(function(){ var m=document.getElementById('addCallModalOverlay'); if(m) m.classList.add('active'); })" class="sidebar-menu-btn" style="border: 1.5px solid #3b82f6; background: rgba(37, 99, 235, 0.05);">
           <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff;">
             <i class="fas fa-plus-circle"></i>
@@ -1364,6 +1374,82 @@
             <!-- Multi-Photo Thumbnails Grid Container -->
             <div id="sitePhotosGridContainer" style="display: none; flex-direction: column; gap: 0.5rem; background: var(--bg-card); padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
               <div id="sitePhotosList" style="display: flex; flex-direction: column; gap: 0.45rem;"></div>
+            </div>
+          </div>
+
+          <!-- CHAIN-REACTION HARDWARE ASSET DEFECT & REQUISITION LOGGER -->
+          <div style="background: rgba(139, 92, 246, 0.06); border: 1.5px solid rgba(139, 92, 246, 0.3); padding: 0.85rem; border-radius: var(--radius-md); margin: 0.85rem 0;">
+            <h4 style="font-size: 0.82rem; font-weight: 800; color: #7c3aed; margin: 0 0 0.5rem 0; display: flex; align-items: center; justify-content: space-between;">
+              <span><i class="fas fa-cubes-stacked"></i> Hardware Condition / Defect Inspection</span>
+              <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #7c3aed; font-size: 0.65rem; font-weight: 800;">CHAIN-REACTION ASSET LOG</span>
+            </h4>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+              Report faulty, broken, or missing equipment during this school visit to instantly trigger replacement requisitions on Statewide Admin Portal.
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-bottom: 0.45rem;">
+              <div>
+                <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">Target Lab</label>
+                <select id="drawerDefectLabSelect" class="form-control" style="font-size: 0.78rem; padding: 0.35rem 0.5rem;">
+                  <option value="Lab 1">Lab 1</option>
+                  <option value="Lab 2">Lab 2</option>
+                  <option value="Lab 3">Lab 3</option>
+                  <option value="Lab 4">Lab 4</option>
+                  <option value="Lab 5">Lab 5</option>
+                  <option value="Lab 6">Lab 6</option>
+                  <option value="Lab 7">Lab 7</option>
+                  <option value="Lab 8">Lab 8</option>
+                  <option value="Lab 9">Lab 9</option>
+                  <option value="Smart Classroom">Smart Classroom</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">Defect Condition</label>
+                <select id="drawerDefectTypeSelect" class="form-control" style="font-size: 0.78rem; padding: 0.35rem 0.5rem;">
+                  <option value="None">-- No Defect / Working OK --</option>
+                  <option value="Faulty">⚠️ Faulty / Not Working</option>
+                  <option value="Broken">💥 Broken / Physical Damage</option>
+                  <option value="Missing">❌ Missing / Not Found</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.45rem; margin-bottom: 0.45rem;">
+              <div>
+                <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">Select Hardware Item</label>
+                <select id="drawerDefectItemSelect" class="form-control" style="font-size: 0.78rem; padding: 0.35rem 0.5rem;">
+                  <option value="UPS Batteries (12V)">UPS Batteries (12V - 14 Nos Bank)</option>
+                  <option value="5 KVA Online UPS">5 KVA Online UPS</option>
+                  <option value="5 KVA Isolation Transformer">5 KVA Isolation Transformer</option>
+                  <option value="Acer Desktop CPU">Acer Desktop CPU</option>
+                  <option value="Acer Monitor (TFT/LED)">Acer Monitor (TFT/LED)</option>
+                  <option value="Acer USB Keyboard">Acer USB Keyboard</option>
+                  <option value="Acer USB Optical Mouse">Acer USB Optical Mouse</option>
+                  <option value="CP Plus IP Surveillance Camera">CP Plus IP Surveillance Camera</option>
+                  <option value="24-Port D-Link Switch">24-Port D-Link Switch</option>
+                  <option value="Cisco Meraki Security Router">Cisco Meraki Security Router</option>
+                  <option value="Short-Throw Projector">Short-Throw Projector</option>
+                  <option value="Projector Display Screen">Projector Display Screen</option>
+                  <option value="Projector Remote Control">Projector Remote Control</option>
+                  <option value="Web Camera (HD)">Web Camera (HD)</option>
+                  <option value="Headphone Audio Splitter">Headphone Audio Splitter</option>
+                  <option value="Zebronics Multimedia Speakers">Zebronics Multimedia Speakers</option>
+                  <option value="Smart Board (Interactive Flat Panel)">Smart Board (IFPD Interactive Panel)</option>
+                  <option value="1 KVA Line-Interactive UPS">1 KVA Line-Interactive UPS (PUPS)</option>
+                  <option value="UPS Batteries for 1KVA">UPS Batteries for 1KVA (3 Nos)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">Quantity</label>
+                <input type="number" id="drawerDefectQtyInput" class="form-control" value="1" min="1" max="126" style="font-size: 0.78rem; padding: 0.35rem 0.5rem;">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">Defect Specifics / Serial No / Remarks</label>
+              <input type="text" id="drawerDefectRemarksInput" class="form-control" placeholder="e.g. Battery swollen / CPU Motherboard power issue..." style="font-size: 0.78rem; padding: 0.35rem 0.5rem;">
             </div>
           </div>
 
@@ -2165,6 +2251,15 @@
     </div>
   </div>
 
+  <!-- ═══ STATEWIDE ADMIN CONTROL CENTER MODAL OVERLAY ═══ -->
+  <div id="adminPortalModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.adminViews.closeAdminPortal()">
+    <div class="drawer" style="max-width: 1250px; width: 95vw; height: 90vh; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg-card); box-shadow: 0 25px 60px rgba(0,0,0,0.35); padding: 0;">
+      <div id="adminPortalContent" style="flex: 1; height: 100%; overflow: hidden; display: flex; flex-direction: column;">
+        <!-- Rendered dynamically via window.adminViews.render() -->
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ CCC SCHOOL DASHBOARD MODAL OVERLAY (REPLICATING SCREENSHOT 2) ═══ -->
   <div id="cccSchoolDashboardOverlay" class="drawer-overlay">
     <div class="drawer" style="max-width: 950px; width: 95%;">
@@ -2311,6 +2406,8 @@
   <script src="js/excelTemplate.js?v=20260815.1"></script>
   <script src="js/udiseGeo.js?v=20260815.1"></script>
   <script src="js/ipPingEngine.js?v=20260815.1"></script>
+  <script src="js/admin/adminStore.js?v=1.0"></script>
+  <script src="js/admin/adminViews.js?v=1.0"></script>
   <script src="js/app.js?v=111.0"></script>
   <script src="js/tracker.js?v=111.0"></script>
   <script src="js/dashboard.js?v=111.0"></script>
@@ -4904,6 +5001,30 @@
 
           if (window.appStore && typeof window.appStore.updateCall === 'function') {
             window.appStore.updateCall(activeId, updatePayload);
+          }
+
+          // Chain-Reaction Defect Recording
+          var defectTypeSelect = document.getElementById('drawerDefectTypeSelect');
+          var defectType = defectTypeSelect ? defectTypeSelect.value : 'None';
+          if (defectType && defectType !== 'None') {
+            var callObj = (window.appStore && typeof window.appStore.getCallById === 'function') ? window.appStore.getCallById(activeId) : {};
+            var labNo = document.getElementById('drawerDefectLabSelect') ? document.getElementById('drawerDefectLabSelect').value : 'Lab 1';
+            var itemName = document.getElementById('drawerDefectItemSelect') ? document.getElementById('drawerDefectItemSelect').value : 'Hardware Item';
+            var defectQty = document.getElementById('drawerDefectQtyInput') ? (parseInt(document.getElementById('drawerDefectQtyInput').value) || 1) : 1;
+            var defectRemarks = document.getElementById('drawerDefectRemarksInput') ? document.getElementById('drawerDefectRemarksInput').value : '';
+
+            if (window.adminStore && typeof window.adminStore.recordHardwareDefect === 'function') {
+              window.adminStore.recordHardwareDefect((callObj && callObj.udise) ? callObj.udise : 'N/A', {
+                schoolName: (callObj && callObj.schoolName) ? callObj.schoolName : 'School',
+                district: (callObj && callObj.district) ? callObj.district : 'NAGAPATTINAM',
+                labNo: labNo,
+                itemName: itemName,
+                defectType: defectType,
+                qty: defectQty,
+                remarks: defectRemarks,
+                reportedBy: engVal || (window.authStore && window.authStore.currentUser && window.authStore.currentUser.name) || 'Field Engineer'
+              });
+            }
           }
 
           var overlay = document.getElementById('editDrawerOverlay');

@@ -91,8 +91,8 @@ class AppStore {
     // Auto-clean any duplicate calls
     this.cleanDuplicateCalls();
 
-    // Persist to unified storage
-    this.saveCalls();
+    // Persist to local storage only (do NOT push to cloud during startup initialization)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
   }
 
   setupCloudSync() {
@@ -124,8 +124,8 @@ class AppStore {
       }
     }, 5000);
 
-    // 4. Initial cloud pull (seed cloud if empty)
-    setTimeout(() => this.fetchCloudCalls(true), 300);
+    // 4. Initial cloud pull
+    setTimeout(() => this.fetchCloudCalls(true), 200);
   }
 
   async fetchCloudCalls(force = false) {
@@ -144,16 +144,22 @@ class AppStore {
 
       // 1. Cloud was explicitly wiped to 0 calls
       if (data.wasReset === true) {
-        if (this.calls.length > 0 || localStorage.getItem('FIELD_TRACKER_WAS_RESET') !== 'true') {
-          console.log('[CLOUD SYNC] Cloud was wiped. Syncing 0-state to this device.');
-          localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
-          this.calls = [];
-          localStorage.setItem(STORAGE_KEY, '[]');
-          localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
-          this.notify();
-          if (typeof window.updateGlobalKpiCards === 'function') {
-            window.updateGlobalKpiCards([], this.settings);
-          }
+        localStorage.setItem('FIELD_TRACKER_WAS_RESET', 'true');
+        localStorage.setItem(STORAGE_KEY, '[]');
+        localStorage.setItem('KSSMART_LAST_SYNC_TS', String(cloudTimestamp));
+        this.calls = [];
+        this.notify();
+        if (typeof window.updateGlobalKpiCards === 'function') {
+          window.updateGlobalKpiCards([], this.settings);
+        }
+        if (window.tracker && typeof window.tracker.render === 'function') {
+          try { window.tracker.render(); } catch(e) {}
+        }
+        if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
+          try { window.dashboard.updateDashboard([], this.settings); } catch(e) {}
+        }
+        if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
+          try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
         }
         return;
       }
@@ -173,6 +179,15 @@ class AppStore {
             this.notify();
             if (typeof window.updateGlobalKpiCards === 'function') {
               window.updateGlobalKpiCards(this.calls, this.settings);
+            }
+            if (window.tracker && typeof window.tracker.render === 'function') {
+              try { window.tracker.render(); } catch(e) {}
+            }
+            if (window.dashboard && typeof window.dashboard.updateDashboard === 'function') {
+              try { window.dashboard.updateDashboard(this.calls, this.settings); } catch(e) {}
+            }
+            if (window.routePlanner && typeof window.routePlanner.populateAvailableCalls === 'function') {
+              try { window.routePlanner.populateAvailableCalls(); } catch(e) {}
             }
           }
         }
@@ -202,7 +217,7 @@ class AppStore {
       const wasReset = isExplicitReset || (this.calls.length === 0 && localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true');
       const timestamp = Date.now();
       const payload = {
-        calls: this.calls,
+        calls: wasReset ? [] : this.calls,
         wasReset: wasReset,
         timestamp: timestamp
       };
@@ -281,21 +296,6 @@ class AppStore {
     if (typeof window.updateGlobalKpiCards === 'function') {
       window.updateGlobalKpiCards(this.calls, this.settings);
     }
-  }
-
-  saveCalls() {
-    const partitionKey = this.getUserPartitionKey();
-    const dataStr = JSON.stringify(this.calls);
-
-    try {
-      localStorage.setItem(partitionKey, dataStr);
-      localStorage.setItem(STORAGE_KEY, dataStr);
-      this.createAutoBackup();
-    } catch (e) {
-      console.warn('LocalStorage save warning:', e);
-    }
-
-    this.notify();
   }
 
   createAutoBackup() {

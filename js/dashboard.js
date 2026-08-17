@@ -204,12 +204,13 @@ class FieldCallDashboard {
         const textColor = isDark ? '#cbd5e1' : '#475569';
         const borderColor = isDark ? '#131b2e' : '#ffffff';
         
-        if (this.statusChartRef) {
-          // Update existing chart instance
-          this.statusChartRef.data.datasets[0].data = chartData;
-          this.statusChartRef.data.datasets[0].borderColor = borderColor;
-          this.statusChartRef.options.plugins.legend.labels.color = textColor;
-          this.statusChartRef.update();
+        const existingChart = Chart.getChart(ctx);
+        if (existingChart) {
+          existingChart.data.datasets[0].data = chartData;
+          existingChart.data.datasets[0].borderColor = borderColor;
+          existingChart.options.plugins.legend.labels.color = textColor;
+          existingChart.update();
+          this.statusChartRef = existingChart;
         } else {
           // Initialize new Chart instance
           this.statusChartRef = new Chart(ctx, {

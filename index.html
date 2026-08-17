@@ -2584,11 +2584,12 @@
           var incompleteCount = calls.filter(function(c) { return c.status === 'Incomplete'; }).length;
           var chartData = [completedCount, inProgressCount, notStartedCount, incompleteCount];
 
-          if (window._fallbackChartRef) {
-            window._fallbackChartRef.data.datasets[0].data = chartData;
-            window._fallbackChartRef.update();
-          } else {
-            try {
+          try {
+            var existing = Chart.getChart(ctx);
+            if (existing) {
+              existing.data.datasets[0].data = chartData;
+              existing.update();
+            } else {
               window._fallbackChartRef = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -2614,9 +2615,9 @@
                   cutout: '65%'
                 }
               });
-            } catch(chartErr) {
-              console.error('[FALLBACK CHART ERROR]', chartErr);
             }
+          } catch(chartErr) {
+            console.warn('[FALLBACK CHART NOTICE]', chartErr);
           }
         }
 

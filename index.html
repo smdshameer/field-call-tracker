@@ -2445,12 +2445,17 @@
     (function() {
       // Get calls data from wherever it's available
       function _getCalls() {
+        if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') return [];
         if (window.appStore && Array.isArray(window.appStore.calls)) {
-          if (window.appStore.calls.length > 0) return window.appStore.calls;
-          if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') return [];
           return window.appStore.calls;
         }
-        if (localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true') return [];
+        var saved = localStorage.getItem('NAGAPATTINAM_FIELD_CALLS_V1');
+        if (saved !== null && saved.trim() !== '') {
+          try {
+            var parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed;
+          } catch(e) {}
+        }
         if (window.INITIAL_FIELD_CALLS && window.INITIAL_FIELD_CALLS.length > 0) return window.INITIAL_FIELD_CALLS;
         return [];
       }

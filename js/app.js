@@ -48,16 +48,7 @@ class AppStore {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
-    // 2. Load Centralized Data & Auto-upgrade Stale Caches
-    const CURRENT_VERSION = '2026_08_17_V7_RESTORE_53';
-    const savedVersion = localStorage.getItem('KSSMART_DATASET_VERSION');
-
-    // If version changed, clear any previous test reset flag and upgrade
-    if (savedVersion !== CURRENT_VERSION) {
-      localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
-      localStorage.setItem('KSSMART_DATASET_VERSION', CURRENT_VERSION);
-    }
-
+    // 2. Explicitly Reset or Wiped Workspace -> 0 Calls
     const isExplicitlyReset = localStorage.getItem('FIELD_TRACKER_WAS_RESET') === 'true';
     if (isExplicitlyReset) {
       this.calls = [];
@@ -69,48 +60,29 @@ class AppStore {
       return;
     }
 
-    let loadedCalls = null;
+    // 3. Load Saved Calls from Central Storage
     const centralCallsStr = localStorage.getItem(STORAGE_KEY);
     if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
       try {
         const parsed = JSON.parse(centralCallsStr);
-        if (Array.isArray(parsed) && parsed.length >= 53) {
-          loadedCalls = parsed;
+        if (Array.isArray(parsed)) {
+          this.calls = parsed;
+          if (this.calls.length === 0) {
+            this.notify();
+            if (typeof window.updateGlobalKpiCards === 'function') {
+              window.updateGlobalKpiCards([], this.settings);
+            }
+            return;
+          }
         }
       } catch (e) {
         console.error('Error loading centralized calls:', e);
       }
-    }
-
-    // If version is missing/older, or storage had old 45 calls / 0 calls:
-    if (loadedCalls !== null) {
-      this.calls = loadedCalls;
     } else {
-      console.log('[APP] Upgrading to canonical 53 calls dataset (Avg Ticket Age: 149 days)...');
+      console.log('[APP] First-time initialization with 53 baseline calls...');
       const initialData = window.INITIAL_FIELD_CALLS || [];
       this.calls = JSON.parse(JSON.stringify(initialData));
-      try {
-        localStorage.setItem('KSSMART_DATASET_VERSION', CURRENT_VERSION);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
-      } catch(e) {}
-    }
-
-    // Ensure all 53 canonical baseline calls are present with full parity
-    const initialData = window.INITIAL_FIELD_CALLS || [];
-    if (initialData.length > 0) {
-      const existingMap = new Map();
-      this.calls.forEach(c => existingMap.set(String(c.id), c));
-
-      let addedMissing = false;
-      initialData.forEach(baseCall => {
-        if (!existingMap.has(String(baseCall.id))) {
-          this.calls.push(JSON.parse(JSON.stringify(baseCall)));
-          addedMissing = true;
-        }
-      });
-      if (addedMissing) {
-        this.calls.sort((a, b) => (parseInt(a.id) || 0) - (parseInt(b.id) || 0));
-      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
     }
 
     // Auto-enrich calls with district, block, and IP Address if missing

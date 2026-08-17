@@ -6,10 +6,15 @@
 class WeeklyCallImporter {
   constructor() {
     this.parsedCalls = [];
+    this._initialized = false;
+    this._isImporting = false;
     this.init();
   }
 
   init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
     const importCallsBtn = document.getElementById('importCallsBtn');
     const importModalOverlay = document.getElementById('importModalOverlay');
     const closeImportModal = document.getElementById('closeImportModal');
@@ -531,97 +536,105 @@ class WeeklyCallImporter {
   }
 
   confirmImport() {
-    if (!this.parsedCalls || this.parsedCalls.length === 0) {
-      alert('⚠️ No valid calls to import. Please choose an Excel file first.');
-      return;
-    }
+    if (this._isImporting) return;
+    this._isImporting = true;
 
-    let addedCount = 0;
-    let updatedCount = 0;
+    try {
+      if (!this.parsedCalls || this.parsedCalls.length === 0) {
+        alert('⚠️ No valid calls to import. Please choose an Excel file first.');
+        return;
+      }
 
-    localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
+      const callsToImport = [...this.parsedCalls];
+      let addedCount = 0;
+      let updatedCount = 0;
 
-    if (!window.appStore) window.appStore = { calls: [] };
-    if (!Array.isArray(window.appStore.calls)) window.appStore.calls = [];
+      localStorage.removeItem('FIELD_TRACKER_WAS_RESET');
 
-    // If tracker is empty, directly load all parsed calls
-    if (window.appStore.calls.length === 0) {
-      this.parsedCalls.forEach((callData, idx) => {
-        const cleanData = { ...callData };
-        delete cleanData.isDuplicate;
-        cleanData.id = idx + 1;
-        window.appStore.calls.push(cleanData);
-        addedCount++;
-      });
-    } else {
-      // Merge & Import: Match by UDISE + School Name / Issue
-      this.parsedCalls.forEach(callData => {
-        const cleanData = { ...callData };
-        delete cleanData.isDuplicate;
+      if (!window.appStore) window.appStore = { calls: [] };
+      if (!Array.isArray(window.appStore.calls)) window.appStore.calls = [];
 
-        const cleanUdise = String(cleanData.udise || '').trim();
-        const cleanSchool = String(cleanData.schoolName || '').trim().toLowerCase();
-        const cleanIssue = String(cleanData.issue || '').trim().toLowerCase();
-
-        const existingIdx = window.appStore.calls.findIndex(c => {
-          if (!c) return false;
-          const existUdise = String(c.udise || '').trim();
-          const existSchool = String(c.schoolName || '').trim().toLowerCase();
-          const existIssue = String(c.issue || '').trim().toLowerCase();
-          return existUdise === cleanUdise && (existSchool === cleanSchool || existIssue === cleanIssue);
-        });
-
-        if (existingIdx !== -1) {
-          const existing = window.appStore.calls[existingIdx];
-          window.appStore.calls[existingIdx] = {
-            ...cleanData,
-            id: existing.id,
-            distanceKm: (existing.distanceKm !== null && existing.distanceKm !== undefined) ? existing.distanceKm : cleanData.distanceKm,
-            conveyanceCost: (existing.conveyanceCost !== null && existing.conveyanceCost !== undefined) ? existing.conveyanceCost : cleanData.conveyanceCost,
-            status: (existing.status && existing.status !== 'Not Started') ? existing.status : cleanData.status,
-            dateClosed: existing.dateClosed || cleanData.dateClosed,
-            actionTaken: existing.actionTaken || cleanData.actionTaken,
-            visitedBy: existing.visitedBy || cleanData.visitedBy
-          };
-          updatedCount++;
-        } else {
-          const maxId = window.appStore.calls.length ? Math.max(...window.appStore.calls.map(c => Number(c.id) || 0)) : 0;
-          cleanData.id = maxId + 1;
-          window.appStore.calls.unshift(cleanData);
+      // If tracker is empty, directly load all parsed calls
+      if (window.appStore.calls.length === 0) {
+        callsToImport.forEach((callData, idx) => {
+          const cleanData = { ...callData };
+          delete cleanData.isDuplicate;
+          cleanData.id = idx + 1;
+          window.appStore.calls.push(cleanData);
           addedCount++;
-        }
-      });
-    }
+        });
+      } else {
+        // Merge & Import: Match by UDISE + School Name / Issue
+        callsToImport.forEach(callData => {
+          const cleanData = { ...callData };
+          delete cleanData.isDuplicate;
 
-    if (typeof window.appStore.enrichCalls === 'function') window.appStore.enrichCalls();
-    if (typeof window.appStore.cleanDuplicateCalls === 'function') window.appStore.cleanDuplicateCalls();
-    if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
-    if (typeof window.appStore.notify === 'function') window.appStore.notify();
-    if (typeof window.appStore.pushToCloud === 'function') window.appStore.pushToCloud(false);
+          const cleanUdise = String(cleanData.udise || '').trim();
+          const cleanSchool = String(cleanData.schoolName || '').trim().toLowerCase();
+          const cleanIssue = String(cleanData.issue || '').trim().toLowerCase();
 
-    let msg = `🎉 Successfully processed ${this.parsedCalls.length} call tickets from file!`;
-    if (addedCount > 0 && updatedCount > 0) {
-      msg += `\n\n• ${addedCount} New call tickets added\n• ${updatedCount} Existing call records refreshed and updated`;
-    } else if (addedCount > 0) {
-      msg += `\n\n• ${addedCount} New call tickets added into your tracker!`;
-    } else if (updatedCount > 0) {
-      msg += `\n\n• ${updatedCount} Existing call records refreshed and updated!`;
-    }
-    alert(msg);
+          const existingIdx = window.appStore.calls.findIndex(c => {
+            if (!c) return false;
+            const existUdise = String(c.udise || '').trim();
+            const existSchool = String(c.schoolName || '').trim().toLowerCase();
+            const existIssue = String(c.issue || '').trim().toLowerCase();
+            return existUdise === cleanUdise && (existSchool === cleanSchool || existIssue === cleanIssue);
+          });
 
-    const importModalOverlay = document.getElementById('importModalOverlay');
-    if (importModalOverlay) importModalOverlay.classList.remove('active');
-    this.resetPreview();
+          if (existingIdx !== -1) {
+            const existing = window.appStore.calls[existingIdx];
+            window.appStore.calls[existingIdx] = {
+              ...cleanData,
+              id: existing.id,
+              distanceKm: (existing.distanceKm !== null && existing.distanceKm !== undefined) ? existing.distanceKm : cleanData.distanceKm,
+              conveyanceCost: (existing.conveyanceCost !== null && existing.conveyanceCost !== undefined) ? existing.conveyanceCost : cleanData.conveyanceCost,
+              status: (existing.status && existing.status !== 'Not Started') ? existing.status : cleanData.status,
+              dateClosed: existing.dateClosed || cleanData.dateClosed,
+              actionTaken: existing.actionTaken || cleanData.actionTaken,
+              visitedBy: existing.visitedBy || cleanData.visitedBy
+            };
+            updatedCount++;
+          } else {
+            const maxId = window.appStore.calls.length ? Math.max(...window.appStore.calls.map(c => Number(c.id) || 0)) : 0;
+            cleanData.id = maxId + 1;
+            window.appStore.calls.unshift(cleanData);
+            addedCount++;
+          }
+        });
+      }
 
-    // Re-render tracker and dashboard
-    if (window.tracker && typeof window.tracker.render === 'function') {
-      window.tracker.render();
-    }
-    if (window.dashboard && typeof window.dashboard.updateDashboard === 'function' && window.appStore) {
-      window.dashboard.updateDashboard(window.appStore.calls, window.appStore.settings);
-    }
-    if (typeof window.updateGlobalKpiCards === 'function') {
-      window.updateGlobalKpiCards(window.appStore.calls, window.appStore.settings);
+      if (typeof window.appStore.enrichCalls === 'function') window.appStore.enrichCalls();
+      if (typeof window.appStore.cleanDuplicateCalls === 'function') window.appStore.cleanDuplicateCalls();
+      if (typeof window.appStore.saveCalls === 'function') window.appStore.saveCalls();
+      if (typeof window.appStore.notify === 'function') window.appStore.notify();
+      if (typeof window.appStore._pushToCloudNow === 'function') window.appStore._pushToCloudNow(false);
+
+      let msg = `🎉 Successfully processed ${callsToImport.length} call tickets from file!`;
+      if (addedCount > 0 && updatedCount > 0) {
+        msg += `\n\n• ${addedCount} New call tickets added\n• ${updatedCount} Existing call records refreshed and updated`;
+      } else if (addedCount > 0) {
+        msg += `\n\n• ${addedCount} New call tickets added into your tracker!`;
+      } else if (updatedCount > 0) {
+        msg += `\n\n• ${updatedCount} Existing call records refreshed and updated!`;
+      }
+      alert(msg);
+
+      const importModalOverlay = document.getElementById('importModalOverlay');
+      if (importModalOverlay) importModalOverlay.classList.remove('active');
+      this.resetPreview();
+
+      // Re-render tracker and dashboard
+      if (window.tracker && typeof window.tracker.render === 'function') {
+        window.tracker.render();
+      }
+      if (window.dashboard && typeof window.dashboard.updateDashboard === 'function' && window.appStore) {
+        window.dashboard.updateDashboard(window.appStore.calls, window.appStore.settings);
+      }
+      if (typeof window.updateGlobalKpiCards === 'function') {
+        window.updateGlobalKpiCards(window.appStore.calls, window.appStore.settings);
+      }
+    } finally {
+      this._isImporting = false;
     }
   }
 }

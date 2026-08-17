@@ -789,51 +789,59 @@
       </div>
     </div>
 
-    <div class="nav-actions" style="display: flex; align-items: center; gap: 0.5rem;">
+    <div class="nav-actions" style="display: flex; align-items: center; gap: 0.65rem;">
       
-      <!-- Top-Right Notification Bell Component -->
-      <div class="notification-wrapper" style="position: relative;">
-        <button id="notificationBellBtn" type="button" onclick="window.toggleNotificationDropdown(event)" class="btn btn-sm btn-outline notification-btn" title="Notifications & Urgent Alerts" style="position: relative; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); border-color: var(--border-color); cursor: pointer; transition: all 0.2s;">
-          <i class="fas fa-bell"></i>
-          <span id="notificationBadge" class="notification-badge" style="position: absolute; top: -3px; right: -3px; background: #ef4444; color: #ffffff; font-size: 0.6rem; font-weight: 800; padding: 0.1rem 0.35rem; border-radius: 99px; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-card); box-shadow: 0 2px 4px rgba(239,68,68,0.4);">3</span>
-        </button>
+      <!-- Quick Action Utility Bar (Notification, Theme, Settings) -->
+      <div class="topbar-controls-island" style="display: flex; align-items: center; gap: 0.25rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 3px; border-radius: 12px; box-shadow: var(--shadow-xs);">
+        
+        <!-- Notification Bell -->
+        <div class="notification-wrapper" style="position: relative;">
+          <button id="notificationBellBtn" type="button" onclick="window.toggleNotificationDropdown(event)" class="topbar-icon-btn" title="Notifications & Urgent Alerts" style="position: relative; width: 34px; height: 34px; border-radius: 9px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
+            <i class="fas fa-bell"></i>
+            <span id="notificationBadge" class="notification-badge" style="position: absolute; top: 1px; right: 1px; background: #ef4444; color: #ffffff; font-size: 0.58rem; font-weight: 800; padding: 0.08rem 0.3rem; border-radius: 99px; min-width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-card); box-shadow: 0 2px 4px rgba(239,68,68,0.4);">3</span>
+          </button>
 
-        <!-- Notification Popover Dropdown Panel -->
-        <div id="notificationDropdown" class="notification-dropdown" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 340px; max-width: 90vw; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.18); z-index: 10000; overflow: hidden;">
-          <div class="notification-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); background: var(--bg-main);">
-            <div style="font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary);">
-              <i class="fas fa-bell" style="color: var(--primary);"></i> Alerts & Activity
-              <span id="notifCountPill" class="badge" style="background: rgba(239,68,68,0.12); color: #ef4444; font-size: 0.68rem; font-weight: 800; padding: 0.12rem 0.4rem; border-radius: 6px;">3 Urgent</span>
+          <!-- Notification Popover Dropdown Panel -->
+          <div id="notificationDropdown" class="notification-dropdown" style="display: none; position: absolute; right: -50px; top: calc(100% + 10px); width: 340px; max-width: 90vw; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: 0 14px 36px rgba(0,0,0,0.22); z-index: 10000; overflow: hidden;">
+            <div class="notification-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); background: var(--bg-main);">
+              <div style="font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary);">
+                <i class="fas fa-bell" style="color: var(--primary);"></i> Alerts & Activity
+                <span id="notifCountPill" class="badge" style="background: rgba(239,68,68,0.12); color: #ef4444; font-size: 0.68rem; font-weight: 800; padding: 0.12rem 0.4rem; border-radius: 6px;">3 Urgent</span>
+              </div>
+              <button type="button" onclick="window.markAllNotificationsRead(event)" class="btn btn-xs btn-outline" style="font-size: 0.65rem; padding: 0.12rem 0.4rem; border-radius: 6px;" title="Dismiss Alerts">Clear All</button>
             </div>
-            <button type="button" onclick="window.markAllNotificationsRead(event)" class="btn btn-xs btn-outline" style="font-size: 0.65rem; padding: 0.12rem 0.4rem; border-radius: 6px;" title="Dismiss Alerts">Clear All</button>
-          </div>
-          
-          <div id="notificationList" class="notification-list" style="max-height: 350px; overflow-y: auto; padding: 0.25rem 0;">
-            <!-- Rendered dynamically via JS -->
+            
+            <div id="notificationList" class="notification-list" style="max-height: 350px; overflow-y: auto; padding: 0.25rem 0;">
+              <!-- Rendered dynamically via JS -->
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Active User Profile Badge & Theme Toggle -->
-      <div id="userProfileBar" style="display: flex; align-items: center; gap: 0.45rem;">
-        <button id="themeToggleBtn" onclick="window._toggleAppTheme()" class="theme-toggle" title="Toggle Light/Dark Theme" style="width: 32px; height: 32px; font-size: 0.9rem;">
+        <!-- Dark/Light Theme Switcher -->
+        <button id="themeToggleBtn" type="button" onclick="window._toggleAppTheme()" class="topbar-icon-btn" title="Toggle Light/Dark Theme" style="width: 34px; height: 34px; border-radius: 9px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
           <i class="fas fa-moon"></i>
         </button>
-        <button id="engineerSettingsBtn" onclick="window._openEngineerSettingsModal()" class="btn btn-sm btn-outline" style="color: var(--primary); border-color: var(--primary); padding: 0.35rem 0.55rem;" title="Settings & Profile">
+
+        <!-- Settings Modal Trigger -->
+        <button id="engineerSettingsBtn" type="button" onclick="window._openEngineerSettingsModal()" class="topbar-icon-btn" title="System Settings & Profile" style="width: 34px; height: 34px; border-radius: 9px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
           <i class="fas fa-cog"></i>
         </button>
-
-        <div class="user-profile-info" style="display: flex; align-items: center; gap: 0.5rem; padding-left: 0.5rem; border-left: 1px solid var(--border-color); margin-left: 0.2rem;">
-          <i class="fas fa-user-circle" style="color: var(--primary); font-size: 1.45rem;"></i>
-          <div style="display: flex; flex-direction: column; line-height: 1.15;">
-            <span id="userNameDisplay" style="font-weight: 700; font-size: 0.8rem; white-space: nowrap;">Field Engineer</span>
-            <span id="userRoleDisplay" style="font-size: 0.67rem; color: var(--text-muted); white-space: nowrap; margin-bottom: 0.15rem;">Field Engineer</span>
-            <button id="appLogoutBtn" onclick="window.authStore.logout()" class="btn btn-xs btn-outline" style="padding: 0.12rem 0.45rem; font-size: 0.67rem; border-radius: var(--radius-sm); color: #ef4444; border-color: rgba(239,68,68,0.4); width: fit-content; font-weight: 700;" title="Log Out of KS Smart Solutions">
-              <i class="fas fa-right-from-bracket"></i> Log Out
-            </button>
-          </div>
-        </div>
       </div>
+
+      <!-- Compact User Profile Pill -->
+      <div id="userProfileBar" class="user-profile-pill" style="display: flex; align-items: center; gap: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 4px 8px 4px 6px; border-radius: 12px; box-shadow: var(--shadow-xs);">
+        <div class="user-avatar-badge" style="width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #1877f2, #0d65d9); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(24,119,242,0.3);">
+          <i class="fas fa-user-tie"></i>
+        </div>
+        <div style="display: flex; flex-direction: column; line-height: 1.2; padding-right: 0.25rem;">
+          <span id="userNameDisplay" style="font-weight: 700; font-size: 0.8rem; color: var(--text-primary); white-space: nowrap;">Mohamed Shameer</span>
+          <span id="userRoleDisplay" style="font-size: 0.66rem; color: var(--text-muted); white-space: nowrap;">Field Engineer (Emp ID: 569)</span>
+        </div>
+        <button id="appLogoutBtn" type="button" onclick="window.authStore.logout()" class="btn-logout-icon" style="width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.2); background: rgba(239,68,68,0.06); color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;" title="Log Out of KS Smart Solutions">
+          <i class="fas fa-right-from-bracket"></i>
+        </button>
+      </div>
+
     </div>
   </header>
 

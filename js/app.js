@@ -286,28 +286,7 @@ class AppStore {
     }
   }
 
-  updateCloudSyncBadge(status) {
-    const badge = document.getElementById('cloudSyncStatusBadge');
-    const text = document.getElementById('cloudSyncText');
-    if (!badge || !text) return;
-
-    if (status === 'syncing') {
-      badge.style.color = '#3b82f6';
-      badge.style.background = 'rgba(59, 130, 246, 0.1)';
-      badge.style.borderColor = 'rgba(59, 130, 246, 0.25)';
-      text.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
-    } else if (status === 'synced') {
-      badge.style.color = '#10b981';
-      badge.style.background = 'rgba(16, 185, 129, 0.1)';
-      badge.style.borderColor = 'rgba(16, 185, 129, 0.25)';
-      text.innerHTML = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;margin-right:4px;"></span>Cloud Synced';
-    } else {
-      badge.style.color = '#f59e0b';
-      badge.style.background = 'rgba(245, 158, 11, 0.1)';
-      badge.style.borderColor = 'rgba(245, 158, 11, 0.25)';
-      text.innerHTML = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:4px;"></span>Local Saved';
-    }
-  }
+  updateCloudSyncBadge(status) {}
 
   saveCalls() {
     const partitionKey = this.getUserPartitionKey();

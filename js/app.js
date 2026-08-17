@@ -49,7 +49,7 @@ class AppStore {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.settings.theme || 'light');
 
-    // 2. Load Centralized Data
+    // 2. Load Centralized Data & Auto-upgrade Stale Caches
     if (isExplicitlyReset) {
       this.calls = [];
       localStorage.setItem(STORAGE_KEY, '[]');
@@ -60,26 +60,35 @@ class AppStore {
       return;
     }
 
+    const CURRENT_VERSION = '2026_08_17_V6_53_CALLS';
+    const savedVersion = localStorage.getItem('KSSMART_DATASET_VERSION');
     let loadedCalls = null;
-    const centralCallsStr = localStorage.getItem(STORAGE_KEY);
-    if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
-      try {
-        const parsed = JSON.parse(centralCallsStr);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          loadedCalls = parsed;
+
+    if (savedVersion === CURRENT_VERSION) {
+      const centralCallsStr = localStorage.getItem(STORAGE_KEY);
+      if (centralCallsStr !== null && centralCallsStr.trim() !== '') {
+        try {
+          const parsed = JSON.parse(centralCallsStr);
+          if (Array.isArray(parsed) && parsed.length >= 53) {
+            loadedCalls = parsed;
+          }
+        } catch (e) {
+          console.error('Error loading centralized calls:', e);
         }
-      } catch (e) {
-        console.error('Error loading centralized calls:', e);
       }
     }
 
-    // Fallback to canonical baseline calls (53 calls with 149 days avg age)
+    // If version is missing/older, or storage had old 45 calls:
     if (loadedCalls !== null) {
       this.calls = loadedCalls;
     } else {
-      console.log('[APP] Initializing with canonical 53 calls (avg age: 149 days)...');
+      console.log('[APP] Upgrading to canonical 53 calls dataset (Avg Ticket Age: 149 days)...');
       const initialData = window.INITIAL_FIELD_CALLS || [];
       this.calls = JSON.parse(JSON.stringify(initialData));
+      try {
+        localStorage.setItem('KSSMART_DATASET_VERSION', CURRENT_VERSION);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.calls));
+      } catch(e) {}
     }
 
     // Ensure all 53 canonical baseline calls are present with full parity
@@ -106,7 +115,7 @@ class AppStore {
     // Auto-clean any duplicate calls
     this.cleanDuplicateCalls();
 
-    // Persist to user partition
+    // Persist to unified storage
     this.saveCalls();
   }
 

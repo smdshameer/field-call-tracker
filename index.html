@@ -2252,9 +2252,9 @@
   </div>
 
   <!-- ═══ STATEWIDE ADMIN CONTROL CENTER MODAL OVERLAY ═══ -->
-  <div id="adminPortalModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.adminViews.closeAdminPortal()">
-    <div class="drawer" style="max-width: 1250px; width: 95vw; height: 90vh; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg-card); box-shadow: 0 25px 60px rgba(0,0,0,0.35); padding: 0;">
-      <div id="adminPortalContent" style="flex: 1; height: 100%; overflow: hidden; display: flex; flex-direction: column;">
+  <div id="adminPortalModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.adminViews.closeAdminPortal()" style="z-index: 105000;">
+    <div class="drawer admin-portal-drawer" style="max-width: 1250px; width: 96vw; height: 92vh; max-height: 92vh; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg-main, #f8fafc); box-shadow: 0 25px 60px rgba(0,0,0,0.35); padding: 0;">
+      <div id="adminPortalContent" style="flex: 1; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: var(--bg-main, #f8fafc);">
         <!-- Rendered dynamically via window.adminViews.render() -->
       </div>
     </div>

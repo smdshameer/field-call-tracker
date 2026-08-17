@@ -50,18 +50,18 @@
 
   class AdminStore {
     constructor() {
-      this.storageKey = 'KS_FIELD_TRACKER_ADMIN_STORE_V1';
+      this.storageKey = 'KS_FIELD_TRACKER_ADMIN_STORE_V2';
       this.tnDistricts = TN_DISTRICTS;
       this.hardwareDefs = HARDWARE_CATALOG_DEFS;
       
       this.state = {
         isAdminMode: false,
-        adminPasscode: '8899', // Default Admin Master PIN
+        adminPasscode: '8899',
         activeAdminName: 'State Project Directorate Admin',
         engineers: [],
-        districtAllocations: {}, // district -> empId
+        districtAllocations: {},
         schoolsMaster: [],
-        schoolAssets: {}, // udise -> assetData
+        schoolAssets: {},
         defectLogs: [],
         auditLogs: []
       };
@@ -71,11 +71,17 @@
 
     init() {
       this.loadLocal();
-      if (!this.state.engineers || this.state.engineers.length === 0) {
+      if (!Array.isArray(this.state.engineers) || this.state.engineers.length === 0) {
         this.seedInitialEngineers();
       }
-      if (!this.state.schoolsMaster || this.state.schoolsMaster.length === 0) {
+      if (!Array.isArray(this.state.schoolsMaster) || this.state.schoolsMaster.length === 0) {
         this.seedInitialSchools();
+      }
+      if (!Array.isArray(this.state.defectLogs)) {
+        this.state.defectLogs = [];
+      }
+      if (!this.state.districtAllocations || typeof this.state.districtAllocations !== 'object') {
+        this.rebuildDistrictMap();
       }
     }
 
@@ -84,7 +90,9 @@
         const raw = localStorage.getItem(this.storageKey);
         if (raw) {
           const parsed = JSON.parse(raw);
-          this.state = Object.assign({}, this.state, parsed);
+          if (parsed && typeof parsed === 'object') {
+            this.state = Object.assign({}, this.state, parsed);
+          }
         }
       } catch (err) {
         console.warn('[AdminStore] Failed to load local state:', err);
@@ -99,7 +107,6 @@
       }
     }
 
-    // Seed Tamil Nadu Field Engineers across districts
     seedInitialEngineers() {
       this.state.engineers = [
         {
@@ -116,11 +123,11 @@
         },
         {
           empId: '570',
-          name: 'Karthikeyan R',
+          name: 'Elavarasan',
           phone: '9840000002',
-          email: 'karthik.field@kssmart.co',
-          baseLocation: 'Thiruvarur',
-          assignedDistricts: ['THIRUVARUR', 'THANJAVUR'],
+          email: 'elavarasan@kssmart.co',
+          baseLocation: 'Ariyalur',
+          assignedDistricts: ['ARIYALUR', 'PERAMBALUR'],
           pin: '5700',
           role: 'field_engineer',
           status: 'Active',
@@ -128,11 +135,11 @@
         },
         {
           empId: '571',
-          name: 'Saravanan M',
+          name: 'Vignesh',
           phone: '9840000003',
-          email: 'saravanan.field@kssmart.co',
-          baseLocation: 'Cuddalore',
-          assignedDistricts: ['CUDDALORE', 'VILLUPURAM'],
+          email: 'vignesh@kssmart.co',
+          baseLocation: 'Thanjavur',
+          assignedDistricts: ['THANJAVUR', 'PUDUKKOTTAI'],
           pin: '5710',
           role: 'field_engineer',
           status: 'Active',
@@ -140,11 +147,11 @@
         },
         {
           empId: '572',
-          name: 'Prakash K',
+          name: 'Ramesh',
           phone: '9840000004',
-          email: 'prakash.field@kssmart.co',
-          baseLocation: 'Tiruchirappalli',
-          assignedDistricts: ['TIRUCHIRAPPALLI', 'ARIYALUR', 'PERAMBALUR'],
+          email: 'ramesh@kssmart.co',
+          baseLocation: 'Thiruvarur',
+          assignedDistricts: ['THIRUVARUR', 'TIRUCHIRAPPALLI'],
           pin: '5720',
           role: 'field_engineer',
           status: 'Active',
@@ -156,7 +163,6 @@
       this.saveLocal();
     }
 
-    // Seed Tamil Nadu School Master with Administrator-cum-Instructor (AI) Details & Multi-Lab counts
     seedInitialSchools() {
       this.state.schoolsMaster = [
         {
@@ -201,35 +207,23 @@
           category: 'GHSS',
           district: 'NAGAPATTINAM',
           block: 'Thirumarugal',
-          aiName: 'S. Meenakshi',
-          aiPhone: '9443215560',
+          aiName: 'S. Balamurugan',
+          aiPhone: '9443658210',
           aiAlsoHandlesUdises: [],
-          labCount: 7, // 7 Hi-Tech Labs (70 PCs, 7x 5KVA UPS, 98 Batteries)
+          labCount: 5,
           labType: 'Hi-Tech Lab'
         },
         {
           udise: '33190500101',
-          schoolName: 'GHSS VEDARANYAM BOYS',
-          category: 'HSS',
+          schoolName: 'GHSS VEDARANYAM (CAMPUS)',
+          category: 'GHSS',
           district: 'NAGAPATTINAM',
           block: 'Vedaranyam',
-          aiName: 'V. Murugan',
+          aiName: 'V. Murugesan',
           aiPhone: '9842109844',
           aiAlsoHandlesUdises: [],
-          labCount: 9, // 9 Hi-Tech Labs (90 PCs, 9x 5KVA UPS, 126 Batteries)
+          labCount: 9,
           labType: 'Hi-Tech Lab'
-        },
-        {
-          udise: '33190400101',
-          schoolName: 'PUPS VELANKANNI PRIMARY',
-          category: 'PUPS',
-          district: 'NAGAPATTINAM',
-          block: 'Keezhaiyur',
-          aiName: 'A. Mary Stella',
-          aiPhone: '9787654321',
-          aiAlsoHandlesUdises: [],
-          labCount: 1,
-          labType: 'Smart Classroom'
         }
       ];
 
@@ -238,170 +232,66 @@
 
     rebuildDistrictMap() {
       this.state.districtAllocations = {};
-      this.state.engineers.forEach(eng => {
-        if (eng.status === 'Active' && Array.isArray(eng.assignedDistricts)) {
-          eng.assignedDistricts.forEach(dist => {
-            this.state.districtAllocations[dist.toUpperCase()] = eng.empId;
+      const engineers = this.state.engineers || [];
+      engineers.forEach(eng => {
+        if (Array.isArray(eng.assignedDistricts)) {
+          eng.assignedDistricts.forEach(d => {
+            this.state.districtAllocations[d.toUpperCase().trim()] = eng.empId;
           });
         }
       });
     }
 
-    // Get Assigned Engineer for a given District
     getEngineerForDistrict(districtName) {
       if (!districtName) return null;
-      const normalized = districtName.trim().toUpperCase();
-      const empId = this.state.districtAllocations[normalized];
-      if (empId) {
+      const dKey = districtName.toUpperCase().trim();
+      const empId = this.state.districtAllocations ? this.state.districtAllocations[dKey] : null;
+      if (empId && Array.isArray(this.state.engineers)) {
         return this.state.engineers.find(e => e.empId === empId) || null;
       }
       return null;
     }
 
-    // Assign Districts to a specific Field Engineer
-    assignDistrictsToEngineer(empId, districtList) {
-      const eng = this.state.engineers.find(e => e.empId === empId);
+    assignDistrictsToEngineer(empId, districtsArray) {
+      const eng = (this.state.engineers || []).find(e => e.empId === empId);
       if (!eng) return { success: false, message: 'Engineer not found' };
 
-      const formatted = districtList.map(d => d.trim().toUpperCase());
-      eng.assignedDistricts = formatted;
+      eng.assignedDistricts = (districtsArray || []).map(d => d.toUpperCase().trim());
       this.rebuildDistrictMap();
-      this.logAudit(`Assigned Districts [${formatted.join(', ')}] to ${eng.name} (Emp: ${empId})`);
       this.saveLocal();
-      return { success: true, engineer: eng };
+      return { success: true, message: `Districts assigned to ${eng.name} successfully!` };
     }
 
-    // Reset Engineer PIN / Password
     resetEngineerPin(empId, newPin) {
-      const eng = this.state.engineers.find(e => e.empId === empId);
+      const eng = (this.state.engineers || []).find(e => e.empId === empId);
       if (!eng) return { success: false, message: 'Engineer not found' };
-      if (!newPin || String(newPin).length < 4) {
-        return { success: false, message: 'PIN must be at least 4 digits' };
-      }
-
-      eng.pin = String(newPin);
-      this.logAudit(`Reset Login PIN for ${eng.name} (Emp ID: ${empId}) to ${newPin}`);
+      eng.pin = (newPin || '1234').toString().trim();
       this.saveLocal();
-      return { success: true, message: `Login PIN for ${eng.name} successfully updated to ${newPin}` };
+      return { success: true, message: `PIN reset successfully to ${eng.pin} for ${eng.name}` };
     }
 
-    // Calculate Standard Expected Hardware for a School with Multi-Lab Multiplier
-    getStandardAssetsForSchool(schoolOrUdise) {
-      let school = null;
-      if (typeof schoolOrUdise === 'string') {
-        school = this.state.schoolsMaster.find(s => s.udise === schoolOrUdise);
-      } else {
-        school = schoolOrUdise;
+    recordHardwareDefect(udise, defectData) {
+      if (!Array.isArray(this.state.defectLogs)) {
+        this.state.defectLogs = [];
       }
 
-      const category = (school && school.category) ? school.category.toUpperCase() : 'PUMS';
-      const labCount = (school && school.labCount && school.labCount > 0) ? parseInt(school.labCount) : 1;
-      const isSmartClass = category === 'PUPS';
-
-      const defs = isSmartClass ? this.hardwareDefs.SMART_CLASSROOM : this.hardwareDefs.HITECH_LAB;
-      
-      const calculatedItems = defs.map(item => {
-        const multiplier = isSmartClass ? 1 : labCount;
-        const totalExpected = item.unitQty * multiplier;
-        return {
-          id: item.id,
-          name: item.name,
-          brand: item.brand,
-          desc: item.desc,
-          unit: item.unit,
-          perLabQty: item.unitQty,
-          labCount: multiplier,
-          standardExpectedQty: totalExpected,
-          workingQty: totalExpected,
-          faultyQty: 0,
-          brokenQty: 0,
-          missingQty: 0
-        };
-      });
-
-      return {
-        udise: school ? school.udise : '',
-        schoolName: school ? school.schoolName : '',
-        category: category,
-        labCount: labCount,
-        isSmartClass: isSmartClass,
-        items: calculatedItems
-      };
-    }
-
-    // Record Chain-Reaction Hardware Defect reported by Field Engineer
-    recordHardwareDefect(udise, defectData) {
-      if (!udise) return;
-      const record = {
+      const record = Object.assign({
         id: 'DEF_' + Date.now() + '_' + Math.floor(Math.random()*1000),
-        udise: udise,
-        schoolName: defectData.schoolName || '',
+        udise: udise || 'N/A',
+        schoolName: defectData.schoolName || 'School',
         district: defectData.district || 'NAGAPATTINAM',
         labNo: defectData.labNo || 'Lab 1',
-        itemName: defectData.itemName,
-        defectType: defectData.defectType, // 'Faulty' | 'Broken' | 'Missing'
+        itemName: defectData.itemName || 'Hardware Component',
+        defectType: defectData.defectType || 'Faulty',
         qty: parseInt(defectData.qty) || 1,
-        reportedBy: defectData.reportedBy || 'Field Engineer',
-        reportedDate: new Date().toLocaleDateString('en-GB'),
         remarks: defectData.remarks || '',
-        status: 'Pending Replacement'
-      };
+        reportedBy: defectData.reportedBy || 'Field Engineer',
+        reportedDate: new Date().toISOString().split('T')[0]
+      }, defectData);
 
       this.state.defectLogs.unshift(record);
-      this.logAudit(`Reported Defect: ${record.qty}x ${record.itemName} (${record.defectType}) at ${record.schoolName} (${record.labNo})`);
       this.saveLocal();
       return record;
-    }
-
-    // Ingest Multi-District Calls and Auto-Allocate to Engineers
-    allocateBulkCalls(rawCalls) {
-      if (!Array.isArray(rawCalls)) return { total: 0, allocated: 0, unallocated: 0 };
-      
-      let allocatedCount = 0;
-      let unallocatedCount = 0;
-
-      const processed = rawCalls.map(c => {
-        const district = (c.district || 'NAGAPATTINAM').trim().toUpperCase();
-        const eng = this.getEngineerForDistrict(district);
-
-        if (eng) {
-          c.assignedEngineerId = eng.empId;
-          c.assignedEngineerName = eng.name;
-          allocatedCount++;
-        } else {
-          c.assignedEngineerId = 'UNASSIGNED';
-          c.assignedEngineerName = 'Unassigned District';
-          unallocatedCount++;
-        }
-
-        // Enrich School Category & AI Info if in directory
-        const school = this.state.schoolsMaster.find(s => s.udise === c.udise);
-        if (school) {
-          c.schoolCategory = school.category;
-          c.aiTeacherName = school.aiName;
-          c.aiTeacherPhone = school.aiPhone;
-          c.labCount = school.labCount;
-        }
-
-        return c;
-      });
-
-      this.logAudit(`Bulk Ingested ${rawCalls.length} calls: ${allocatedCount} auto-assigned to engineers, ${unallocatedCount} unassigned.`);
-      this.saveLocal();
-      return { total: rawCalls.length, allocated: allocatedCount, unallocated: unallocatedCount, calls: processed };
-    }
-
-    logAudit(actionText) {
-      const log = {
-        timestamp: Date.now(),
-        dateStr: new Date().toLocaleString('en-GB'),
-        admin: this.state.activeAdminName,
-        action: actionText
-      };
-      this.state.auditLogs.unshift(log);
-      if (this.state.auditLogs.length > 200) {
-        this.state.auditLogs = this.state.auditLogs.slice(0, 200);
-      }
     }
   }
 

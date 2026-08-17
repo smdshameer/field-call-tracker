@@ -789,8 +789,32 @@
       </div>
     </div>
 
-    <div class="nav-actions">
-      <!-- Active User Profile Badge & Logout -->
+    <div class="nav-actions" style="display: flex; align-items: center; gap: 0.5rem;">
+      
+      <!-- Top-Right Notification Bell Component -->
+      <div class="notification-wrapper" style="position: relative;">
+        <button id="notificationBellBtn" type="button" onclick="window.toggleNotificationDropdown(event)" class="btn btn-sm btn-outline notification-btn" title="Notifications & Urgent Alerts" style="position: relative; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); border-color: var(--border-color); cursor: pointer; transition: all 0.2s;">
+          <i class="fas fa-bell"></i>
+          <span id="notificationBadge" class="notification-badge" style="position: absolute; top: -3px; right: -3px; background: #ef4444; color: #ffffff; font-size: 0.6rem; font-weight: 800; padding: 0.1rem 0.35rem; border-radius: 99px; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-card); box-shadow: 0 2px 4px rgba(239,68,68,0.4);">3</span>
+        </button>
+
+        <!-- Notification Popover Dropdown Panel -->
+        <div id="notificationDropdown" class="notification-dropdown" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 340px; max-width: 90vw; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.18); z-index: 10000; overflow: hidden;">
+          <div class="notification-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); background: var(--bg-main);">
+            <div style="font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary);">
+              <i class="fas fa-bell" style="color: var(--primary);"></i> Alerts & Activity
+              <span id="notifCountPill" class="badge" style="background: rgba(239,68,68,0.12); color: #ef4444; font-size: 0.68rem; font-weight: 800; padding: 0.12rem 0.4rem; border-radius: 6px;">3 Urgent</span>
+            </div>
+            <button type="button" onclick="window.markAllNotificationsRead(event)" class="btn btn-xs btn-outline" style="font-size: 0.65rem; padding: 0.12rem 0.4rem; border-radius: 6px;" title="Dismiss Alerts">Clear All</button>
+          </div>
+          
+          <div id="notificationList" class="notification-list" style="max-height: 350px; overflow-y: auto; padding: 0.25rem 0;">
+            <!-- Rendered dynamically via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Active User Profile Badge & Theme Toggle -->
       <div id="userProfileBar" style="display: flex; align-items: center; gap: 0.45rem;">
         <button id="themeToggleBtn" onclick="window._toggleAppTheme()" class="theme-toggle" title="Toggle Light/Dark Theme" style="width: 32px; height: 32px; font-size: 0.9rem;">
           <i class="fas fa-moon"></i>
@@ -2427,10 +2451,199 @@
             var rem = 3 - completedCalls;
             targetStatus.textContent = '⚠️ ' + rem + ' call(s) remaining to reach daily target of 3';
           }
+        // Render top-right Notifications
+        if (typeof window.renderNotifications === 'function') {
+          window.renderNotifications(calls);
         }
       } catch(err) {
         console.error('[updateGlobalKpiCards Error]', err);
       }
+    };
+
+    // === TOP-RIGHT NOTIFICATION SYSTEM ===
+    window._notifActions = {};
+    window._notifDismissed = false;
+
+    window.toggleNotificationDropdown = function(event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      var dropdown = document.getElementById('notificationDropdown');
+      if (!dropdown) return;
+      var isOpen = dropdown.style.display === 'block';
+      dropdown.style.display = isOpen ? 'none' : 'block';
+      if (!isOpen && typeof window.renderNotifications === 'function') {
+        var calls = (window.appStore && Array.isArray(window.appStore.calls)) ? window.appStore.calls : [];
+        window.renderNotifications(calls);
+      }
+    };
+
+    window.closeNotificationDropdown = function() {
+      var dropdown = document.getElementById('notificationDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    };
+
+    window.markAllNotificationsRead = function(event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      window._notifDismissed = true;
+      var badge = document.getElementById('notificationBadge');
+      if (badge) badge.style.display = 'none';
+      var listEl = document.getElementById('notificationList');
+      if (listEl) {
+        listEl.innerHTML = '<div style="text-align:center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.8rem;"><i class="fas fa-check-double" style="color: var(--success); font-size: 1.5rem; display:block; margin-bottom: 0.5rem;"></i>All notifications cleared</div>';
+      }
+      var countPill = document.getElementById('notifCountPill');
+      if (countPill) countPill.textContent = '0 New';
+    };
+
+    // Close notification dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      var wrapper = document.querySelector('.notification-wrapper');
+      var dropdown = document.getElementById('notificationDropdown');
+      if (dropdown && dropdown.style.display === 'block') {
+        if (!wrapper || !wrapper.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      }
+    });
+
+    window.renderNotifications = function(callsList) {
+      var calls = Array.isArray(callsList) ? callsList : ((window.appStore && Array.isArray(window.appStore.calls)) ? window.appStore.calls : []);
+      var listEl = document.getElementById('notificationList');
+      var badgeEl = document.getElementById('notificationBadge');
+      var countPillEl = document.getElementById('notifCountPill');
+      if (!listEl) return;
+
+      var notifs = [];
+
+      // 1. Critical High-Aging Alert
+      var criticalCalls = calls.filter(function(c) { return c.status !== 'Completed' && parseInt(c.ageDays) >= 100; });
+      if (criticalCalls.length > 0) {
+        notifs.push({
+          id: 'high_aging',
+          type: 'critical',
+          icon: 'fa-triangle-exclamation',
+          iconBg: 'rgba(239, 68, 68, 0.12)',
+          iconColor: '#ef4444',
+          title: criticalCalls.length + ' High-Aging Tickets (>100 Days)',
+          desc: 'Oldest: ' + (criticalCalls[0].schoolName || 'School') + ' (' + (criticalCalls[0].ageDays || 0) + ' days pending)',
+          time: 'Critical Priority',
+          action: function() {
+            if (window.tracker) {
+              window.tracker.filterStatus = 'Not Started';
+              window.tracker.searchQuery = '';
+              window.tracker.render();
+              var sec = document.getElementById('trackerSection');
+              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        });
+      }
+
+      // 2. Daily Target Progress Reminder
+      var completedToday = calls.filter(function(c) { return c.status === 'Completed'; }).length;
+      var remTarget = Math.max(0, 3 - completedToday);
+      if (remTarget > 0) {
+        notifs.push({
+          id: 'daily_target',
+          type: 'warning',
+          icon: 'fa-bullseye',
+          iconBg: 'rgba(245, 158, 11, 0.12)',
+          iconColor: '#d97706',
+          title: 'Daily Operations Target (' + completedToday + '/3 Calls)',
+          desc: 'Complete ' + remTarget + ' more visit(s) today to achieve daily engineer target.',
+          time: 'Today',
+          action: function() {
+            if (window.openRoutePlannerModal) window.openRoutePlannerModal();
+          }
+        });
+      } else {
+        notifs.push({
+          id: 'daily_target_done',
+          type: 'success',
+          icon: 'fa-circle-check',
+          iconBg: 'rgba(16, 185, 129, 0.12)',
+          iconColor: '#10b981',
+          title: '🎉 Daily Target Achieved (' + completedToday + ' Completed)',
+          desc: 'You have hit the 3-call target today. Great work!',
+          time: 'Today'
+        });
+      }
+
+      // 3. Centralized Cloud Database Status
+      var dbVer = (window.appStore && window.appStore.version) ? window.appStore.version : 6;
+      notifs.push({
+        id: 'cloud_sync',
+        type: 'info',
+        icon: 'fa-cloud-arrow-up',
+        iconBg: 'rgba(37, 99, 235, 0.12)',
+        iconColor: '#2563eb',
+        title: 'Central Cloud Database Live',
+        desc: 'Cross-device real-time sync active (Cloud Version: v' + dbVer + ')',
+        time: 'Real-Time Sync'
+      });
+
+      // 4. Incomplete Calls Follow-up
+      var incCalls = calls.filter(function(c) { return c.status === 'Incomplete'; });
+      if (incCalls.length > 0) {
+        notifs.push({
+          id: 'incomplete_visits',
+          type: 'warning',
+          icon: 'fa-clock-rotate-left',
+          iconBg: 'rgba(139, 92, 246, 0.12)',
+          iconColor: '#8b5cf6',
+          title: incCalls.length + ' Incomplete Call(s) Need Re-Visit',
+          desc: 'Spare parts, power issues or approvals pending resolution.',
+          time: 'Follow-up Required',
+          action: function() {
+            if (window.tracker) {
+              window.tracker.filterStatus = 'Incomplete';
+              window.tracker.render();
+              var sec = document.getElementById('trackerSection');
+              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        });
+      }
+
+      // Update badge
+      var urgentCount = notifs.filter(function(n) { return n.type === 'critical' || n.type === 'warning'; }).length;
+      if (badgeEl && !window._notifDismissed) {
+        if (urgentCount > 0) {
+          badgeEl.textContent = urgentCount;
+          badgeEl.style.display = 'flex';
+        } else {
+          badgeEl.style.display = 'none';
+        }
+      }
+      if (countPillEl && !window._notifDismissed) {
+        countPillEl.textContent = urgentCount > 0 ? (urgentCount + ' Urgent') : (notifs.length + ' Total');
+      }
+
+      // Render HTML items
+      var html = '';
+      notifs.forEach(function(n) {
+        html += '<div class="notification-item" onclick="if(window._notifActions[\'' + n.id + '\']){ window._notifActions[\'' + n.id + '\'](); window.closeNotificationDropdown(); }" style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;">' +
+          '<div style="width: 32px; height: 32px; border-radius: 8px; background: ' + n.iconBg + '; color: ' + n.iconColor + '; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem; margin-top: 2px;">' +
+            '<i class="fas ' + n.icon + '"></i>' +
+          '</div>' +
+          '<div style="flex: 1; min-width: 0;">' +
+            '<div style="font-weight: 700; font-size: 0.82rem; color: var(--text-primary); margin-bottom: 0.15rem; line-height: 1.25;">' + n.title + '</div>' +
+            '<div style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.35; margin-bottom: 0.25rem;">' + n.desc + '</div>' +
+            '<div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">' + n.time + '</div>' +
+          '</div>' +
+        '</div>';
+      });
+      listEl.innerHTML = html;
+
+      window._notifActions = {};
+      notifs.forEach(function(n) {
+        if (n.action) window._notifActions[n.id] = n.action;
+      });
     };
 
     (function() {

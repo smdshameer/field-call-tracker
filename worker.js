@@ -103,26 +103,25 @@ export default {
     }
 
     if (url.pathname === "/api/calls") {
-      const cache = typeof caches !== 'undefined' ? caches.default : null;
-      const cacheKey = new Request("https://field-call-tracker-store.internal/calls-v1", { method: "GET" });
+      const KV_KEY = "calls_v1";
 
       if (request.method === "GET") {
+        // 1. Fast path: in-memory cache
         let payload = GLOBAL_CALLS_STORE;
-        if (!payload && cache) {
+
+        // 2. KV persistent storage (survives cold starts)
+        if (!payload && env.CALLS_KV) {
           try {
-            const cached = await cache.match(cacheKey);
-            if (cached) {
-              const cachedData = await cached.json();
-              if (cachedData) {
-                payload = cachedData;
-                GLOBAL_CALLS_STORE = payload;
-              }
+            const kvData = await env.CALLS_KV.get(KV_KEY, { type: "json" });
+            if (kvData) {
+              payload = kvData;
+              GLOBAL_CALLS_STORE = payload;
             }
           } catch(e) {}
         }
+
         const calls = (payload && Array.isArray(payload.calls)) ? payload.calls : (Array.isArray(payload) ? payload : null);
         const wasReset = payload ? (payload.wasReset === true) : false;
-
         const storedTimestamp = (payload && payload.timestamp) ? payload.timestamp : 0;
 
         return new Response(JSON.stringify({ success: true, calls: calls, wasReset: wasReset, timestamp: storedTimestamp }), {
@@ -142,22 +141,16 @@ export default {
           const wasReset = (body && body.wasReset === true) || (newCalls.length === 0 && body && body.wasReset !== false);
           const clientTimestamp = (body && body.timestamp) ? body.timestamp : Date.now();
           const storePayload = { calls: newCalls, wasReset: wasReset, timestamp: clientTimestamp };
+
+          // Update in-memory cache
           GLOBAL_CALLS_STORE = storePayload;
 
-          if (cache) {
-            try {
-              const cacheResp = new Response(JSON.stringify(storePayload), {
-                headers: {
-                  "Content-Type": "application/json",
-                  "Cache-Control": "public, max-age=31536000",
-                  "Access-Control-Allow-Origin": "*"
-                }
-              });
-              ctx.waitUntil(cache.put(cacheKey, cacheResp));
-            } catch(e) {}
+          // Persist to KV (survives cold starts and edge node changes)
+          if (env.CALLS_KV) {
+            ctx.waitUntil(env.CALLS_KV.put(KV_KEY, JSON.stringify(storePayload)));
           }
 
-          return new Response(JSON.stringify({ success: true, count: newCalls.length, wasReset: wasReset, timestamp: Date.now() }), {
+          return new Response(JSON.stringify({ success: true, count: newCalls.length, wasReset: wasReset, timestamp: clientTimestamp }), {
             status: 200,
             headers: {
               "Content-Type": "application/json",

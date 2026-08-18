@@ -822,6 +822,12 @@
           <i class="fas fa-moon"></i>
         </button>
 
+        <!-- TN Schools Geo-Directory Button in Top Navbar -->
+        <button id="topNavGeoBtn" type="button" onclick="if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory();" class="topbar-icon-btn" title="TN Schools Geo-Directory & GPS Map Locator" style="width: auto; height: 34px; border-radius: 9px; border: 1.5px solid rgba(2, 132, 199, 0.35); background: rgba(14, 165, 233, 0.1); color: #0284c7; display: flex; align-items: center; gap: 0.4rem; padding: 0 0.65rem; font-weight: 700; font-size: 0.76rem; cursor: pointer; transition: all 0.15s ease;">
+          <i class="fas fa-map-location-dot" style="font-size: 0.9rem;"></i>
+          <span>TN Schools & Map</span>
+        </button>
+
         <!-- Settings Modal Trigger -->
         <button id="engineerSettingsBtn" type="button" onclick="window._openEngineerSettingsModal()" class="topbar-icon-btn" title="System Settings & Profile" style="width: 34px; height: 34px; border-radius: 9px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
           <i class="fas fa-cog"></i>
@@ -830,7 +836,7 @@
 
       <!-- Compact User Profile Pill -->
       <div id="userProfileBar" class="user-profile-pill" style="display: flex; align-items: center; gap: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 4px 8px 4px 6px; border-radius: 12px; box-shadow: var(--shadow-xs);">
-        <div class="user-avatar-badge" style="width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #1877f2, #0d65d9); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(24,119,242,0.3);">
+        <div id="userAvatarBadge" class="user-avatar-badge" style="width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #1877f2, #0d65d9); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(24,119,242,0.3);">
           <i class="fas fa-user-tie"></i>
         </div>
         <div style="display: flex; flex-direction: column; line-height: 1.2; padding-right: 0.25rem;">
@@ -874,9 +880,20 @@
         </div>
       </div>
 
-      <!-- Sidebar Action Items List -->
-      <div class="sidebar-menu-list">
+      <!-- Dynamic Sidebar Action Items List -->
+      <div id="appSidebarMenuList" class="sidebar-menu-list">
         <div class="sidebar-menu-heading">QUICK ACTIONS</div>
+
+        <!-- TN Schools Geo-Directory & GPS Map Locator (StackSchools) -->
+        <button type="button" id="geoDirectoryBtn" onclick="window.openModalFromSidebar(function(){ if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory(); })" class="sidebar-menu-btn" style="border: 1.5px solid #0284c7; background: rgba(14, 165, 233, 0.08);">
+          <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);">
+            <i class="fas fa-map-location-dot"></i>
+          </div>
+          <div class="sidebar-btn-text">
+            <span class="sidebar-btn-title" style="color: #0369a1; font-weight: 700;">TN Schools & Geo-Map</span>
+            <span class="sidebar-btn-sub">38 Districts • UDISE • StackSchools</span>
+          </div>
+        </button>
 
         <button type="button" id="routePlannerBtn" onclick="window.openModalFromSidebar(window.openRoutePlannerModal)" class="sidebar-menu-btn" style="border: 1.5px solid #f59e0b; background: rgba(245, 158, 11, 0.06);">
           <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">
@@ -920,16 +937,6 @@
 
         <div class="sidebar-menu-heading" style="margin-top: 0.75rem;">TOOLS & MANAGEMENT</div>
 
-        <button type="button" onclick="window.openModalFromSidebar(function(){ window.adminViews.openAdminPortal(); })" class="sidebar-menu-btn" style="border: 1.5px solid #1e3a8a; background: rgba(30, 58, 138, 0.06);">
-          <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #ffffff; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
-            <i class="fas fa-shield-halved"></i>
-          </div>
-          <div class="sidebar-btn-text">
-            <span class="sidebar-btn-title" style="color: #1e3a8a; font-weight: 800;">Statewide Admin Portal</span>
-            <span class="sidebar-btn-sub">District Allocations & Asset Control</span>
-          </div>
-        </button>
-
         <button type="button" onclick="window.openModalFromSidebar(function(){ var m=document.getElementById('addCallModalOverlay'); if(m) m.classList.add('active'); })" class="sidebar-menu-btn" style="border: 1.5px solid #3b82f6; background: rgba(37, 99, 235, 0.05);">
           <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff;">
             <i class="fas fa-plus-circle"></i>
@@ -937,16 +944,6 @@
           <div class="sidebar-btn-text">
             <span class="sidebar-btn-title" style="color: #1877f2; font-weight: 700;">+ Log / Add Field Call</span>
             <span class="sidebar-btn-sub">Create New Support Ticket</span>
-          </div>
-        </button>
-
-        <button type="button" onclick="window.openModalFromSidebar(window.openOnboardingGuide)" class="sidebar-menu-btn">
-          <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(29, 78, 216, 0.2)); color: #2563eb;">
-            <i class="fas fa-graduation-cap"></i>
-          </div>
-          <div class="sidebar-btn-text">
-            <span class="sidebar-btn-title">How to Use (Guide)</span>
-            <span class="sidebar-btn-sub">Interactive Step-by-Step Walkthrough</span>
           </div>
         </button>
       </div>
@@ -960,7 +957,10 @@
   </div>
 
   <!-- Main Application Container -->
-  <main class="container">
+  <main class="container" id="mainAppContainer">
+
+    <!-- ═══ 1. FIELD ENGINEER DASHBOARD VIEW ═══ -->
+    <div id="fieldEngineerMainView">
 
     <!-- KPI Summary Grid -->
     <section class="kpi-grid">
@@ -1187,28 +1187,12 @@
         <button id="resetFiltersBtn" class="btn btn-outline btn-sm">
           <i class="fas fa-filter-circle-xmark"></i> Clear Filters
         </button>
+
+        <button type="button" onclick="if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory();" class="btn btn-sm" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; box-shadow: 0 2px 6px rgba(2,132,199,0.3); color: #ffffff; cursor: pointer; white-space: nowrap;">
+          <i class="fas fa-map-location-dot"></i> TN Schools & Geo-Map (38 Districts)
+        </button>
       </div>
     </section>
-
-    <!-- 👑 REPORTING HEAD STATEWIDE COMMAND CENTER BANNER -->
-    <div id="reportingHeadAdminBanner" style="display: none; background: linear-gradient(135deg, #4c1d95, #6d28d9); color: #ffffff; padding: 0.85rem 1.25rem; border-radius: 14px; margin-bottom: 1rem; box-shadow: 0 8px 25px rgba(109, 40, 217, 0.25);">
-      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">
-            <i class="fas fa-crown"></i>
-          </div>
-          <div>
-            <div style="font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em;">👑 REPORTING HEAD MODE: STATEWIDE COMMAND CENTER</div>
-            <div style="font-size: 0.75rem; opacity: 0.9;">Full Control • Reassign Any Call • Monitor Statewide Completion Pace & Missing Materials</div>
-          </div>
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" onclick="if(window.exporter) { window.exporter.openShareModal(); window.exporter.switchShareTab('custom'); }" class="btn btn-sm" style="background: #ffffff; color: #5b21b6; font-weight: 800; border: none; font-size: 0.78rem;">
-            <i class="fas fa-magic"></i> ⚡ 1-Click Custom Master Report
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- Call Tracker Data Grid -->
     <section class="table-card">
@@ -1242,7 +1226,12 @@
           </tbody>
         </table>
       </div>
-    </section>
+    </div> <!-- End fieldEngineerMainView -->
+
+    <!-- ═══ 2. NATIVE STATEWIDE ADMIN DASHBOARD VIEW ═══ -->
+    <div id="adminMainView" style="display: none;">
+      <!-- Dynamically rendered via window.adminViews.render() -->
+    </div>
 
   </main>
 
@@ -1514,7 +1503,12 @@
         <div class="drawer-body">
 
           <div class="form-group">
-            <label class="form-label" for="addSchoolName">School Name</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label class="form-label" for="addSchoolName" style="margin-bottom: 0;">School Name</label>
+              <button type="button" onclick="if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory(document.getElementById('addSchoolName').value);" class="btn btn-xs btn-outline" style="font-size: 0.68rem; font-weight: 700; color: #0284c7; border-color: rgba(2,132,199,0.3); padding: 0.15rem 0.45rem; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-map-location-dot"></i> Browse 38 Districts
+              </button>
+            </div>
             <input type="text" id="addSchoolName" class="form-control" required placeholder="e.g. PUPS NAGAPATTINAM WEST">
           </div>
 
@@ -2251,15 +2245,6 @@
     </div>
   </div>
 
-  <!-- ═══ STATEWIDE ADMIN CONTROL CENTER MODAL OVERLAY ═══ -->
-  <div id="adminPortalModalOverlay" class="drawer-overlay" onclick="if(event.target===this) window.adminViews.closeAdminPortal()" style="z-index: 105000;">
-    <div class="drawer admin-portal-drawer" style="max-width: 1250px; width: 96vw; height: 92vh; max-height: 92vh; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg-main, #f8fafc); box-shadow: 0 25px 60px rgba(0,0,0,0.35); padding: 0;">
-      <div id="adminPortalContent" style="flex: 1; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: var(--bg-main, #f8fafc);">
-        <!-- Rendered dynamically via window.adminViews.render() -->
-      </div>
-    </div>
-  </div>
-
   <!-- ═══ CCC SCHOOL DASHBOARD MODAL OVERLAY (REPLICATING SCREENSHOT 2) ═══ -->
   <div id="cccSchoolDashboardOverlay" class="drawer-overlay">
     <div class="drawer" style="max-width: 950px; width: 95%;">
@@ -2400,14 +2385,30 @@
     </div>
   </div>
 
+  <!-- Floating Action Toolbar for Quick Access (TN Geo-Map, Daily Route, Add Call) -->
+  <div id="floatingQuickActionToolbar" style="position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 999; display: flex; align-items: center; gap: 0.45rem; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.18); padding: 0.35rem 0.5rem; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);">
+    <button type="button" onclick="if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory();" title="TN Schools Geo-Directory & Map (StackSchools)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 0.45rem 0.9rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; cursor: pointer; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4); transition: transform 0.2s ease;">
+      <i class="fas fa-map-location-dot" style="font-size: 0.9rem;"></i>
+      <span>TN Schools & Map</span>
+    </button>
+    <button type="button" onclick="if(typeof window.openRoutePlannerModal==='function') window.openRoutePlannerModal();" title="Plan Daily Route" style="background: rgba(255, 255, 255, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.45rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; cursor: pointer; transition: transform 0.2s ease;">
+      <i class="fas fa-route"></i>
+      <span>Route</span>
+    </button>
+    <button type="button" onclick="var m=document.getElementById('addCallModalOverlay'); if(m){ m.classList.add('active'); m.style.display='flex'; }" title="Log New Field Call" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4); transition: transform 0.2s ease;">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
+
   <!-- JavaScript Modules Execution Order -->
   <script src="js/auth.js?v=111.0"></script>
   <script src="js/initialData.js?v=20260815.1"></script>
   <script src="js/excelTemplate.js?v=20260815.1"></script>
   <script src="js/udiseGeo.js?v=20260815.1"></script>
+  <script src="js/geoDirectory.js?v=1.0"></script>
   <script src="js/ipPingEngine.js?v=20260815.1"></script>
-  <script src="js/admin/adminStore.js?v=1.0"></script>
-  <script src="js/admin/adminViews.js?v=1.0"></script>
+  <script src="js/admin/adminStore.js?v=2.0"></script>
+  <script src="js/admin/adminViews.js?v=2.0"></script>
   <script src="js/app.js?v=111.0"></script>
   <script src="js/tracker.js?v=111.0"></script>
   <script src="js/dashboard.js?v=111.0"></script>
@@ -2964,6 +2965,9 @@
 
       // Global Sidebar Helper Functions (Zero-shake GPU accelerated)
       window.openAppSidebar = function() {
+        if (typeof window.renderAppSidebar === 'function') {
+          window.renderAppSidebar();
+        }
         var s = document.getElementById('appSidebarOverlay');
         if (s) {
           s.classList.add('active');
@@ -3025,7 +3029,211 @@
         if (b2) b2.innerHTML = iconHtml;
       };
 
-      // === ENGINEER PROFILE & SETTINGS HANDLERS ===
+      // === SHOW MAIN CALLS DASHBOARD HELPER ===
+      window.showMainCallsDashboard = function() {
+        var fieldView = document.getElementById('fieldEngineerMainView');
+        var adminView = document.getElementById('adminMainView');
+        if (fieldView) fieldView.style.display = 'block';
+        if (adminView) adminView.style.display = 'none';
+        if (window.tracker && typeof window.tracker.render === 'function') {
+          window.tracker.render();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      // === RENDER APP SIDEBAR DYNAMICALLY BASED ON USER ROLE ===
+      window.renderAppSidebar = function() {
+        var sidebarList = document.getElementById('appSidebarMenuList');
+        if (!sidebarList) return;
+
+        var u = window.authStore ? window.authStore.currentUser : null;
+        var isAdmin = u && (u.role === 'REPORTING_HEAD' || u.username === 'admin' || u.empId === '1001');
+
+        if (isAdmin) {
+          sidebarList.innerHTML = `
+            <div class="sidebar-menu-heading">STATEWIDE OPERATIONS</div>
+
+            <button type="button" onclick="window.showMainCallsDashboard(); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #2563eb; background: rgba(37, 99, 235, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff;">
+                <i class="fas fa-chart-pie"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #2563eb; font-weight: 700;">Statewide Calls Dashboard</span>
+                <span class="sidebar-btn-sub">38 Districts & All Support Tickets</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.showSection('performance'); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #f59e0b; background: rgba(245, 158, 11, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">
+                <i class="fas fa-ranking-star"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #d97706; font-weight: 700;">Engineer Performance</span>
+                <span class="sidebar-btn-sub">Leaderboard & Resolution Rates</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.showSection('engineers'); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #0ea5e9; background: rgba(14, 165, 233, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #ffffff;">
+                <i class="fas fa-user-gear"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #0284c7; font-weight: 700;">Engineers & Districts</span>
+                <span class="sidebar-btn-sub">1-3 District Allocations & PIN Reset</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.showSection('schools'); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #10b981; background: rgba(16, 185, 129, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff;">
+                <i class="fas fa-school"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #059669; font-weight: 700;">School & AI Directory</span>
+                <span class="sidebar-btn-sub">UDISE, Labs & AI Contacts</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.openTnSchoolGeoDirectory(); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #0284c7; background: rgba(14, 165, 233, 0.08);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);">
+                <i class="fas fa-map-location-dot"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #0369a1; font-weight: 700;">TN Schools & Geo-Map</span>
+                <span class="sidebar-btn-sub">38 Districts • GPS • StackSchools</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.showSection('assets'); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #8b5cf6; background: rgba(139, 92, 246, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #ffffff;">
+                <i class="fas fa-cubes-stacked"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #6d28d9; font-weight: 700;">Assets & Hardware Defects</span>
+                <span class="sidebar-btn-sub">Hi-Tech Lab Multiplier & Complaints</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.showSection('reports'); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #6366f1; background: rgba(99, 102, 241, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff;">
+                <i class="fas fa-calendar-days"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #4f46e5; font-weight: 700;">Calendar Reports</span>
+                <span class="sidebar-btn-sub">Historical Date Range Filter</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.openBulkImportCallsModal(); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #ec4899; background: rgba(236, 72, 153, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #ec4899, #db2777); color: #ffffff;">
+                <i class="fas fa-file-arrow-up"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #db2777; font-weight: 700;">Bulk Import Calls</span>
+                <span class="sidebar-btn-sub">Multi-District CSV Upload</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.adminViews.showSection('search'); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #64748b; background: rgba(100, 116, 139, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #64748b, #475569); color: #ffffff;">
+                <i class="fas fa-magnifying-glass"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #475569; font-weight: 700;">Universal Search</span>
+                <span class="sidebar-btn-sub">Search Schools, Engineers, Defects</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="if(window.exporter && typeof window.exporter.exportToExcel==='function') window.exporter.exportToExcel(); window.closeAppSidebar();" class="sidebar-menu-btn" style="border: 1.5px solid #107c41; background: rgba(16, 124, 65, 0.07);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #107c41, #0b5e31); color: #ffffff; box-shadow: 0 2px 8px rgba(16, 124, 65, 0.3);">
+                <i class="fas fa-file-excel"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #107c41; font-weight: 700;">Export Excel (.xlsx)</span>
+                <span class="sidebar-btn-sub">Download Full Call Records</span>
+              </div>
+            </button>
+          `;
+        } else {
+          sidebarList.innerHTML = `
+            <div class="sidebar-menu-heading">QUICK ACTIONS</div>
+
+            <!-- TN Schools Geo-Directory & GPS Map Locator (StackSchools) -->
+            <button type="button" id="geoDirectoryBtn" onclick="window.openModalFromSidebar(function(){ if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory(); })" class="sidebar-menu-btn" style="border: 1.5px solid #0284c7; background: rgba(14, 165, 233, 0.08);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);">
+                <i class="fas fa-map-location-dot"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #0369a1; font-weight: 700;">TN Schools & Geo-Map</span>
+                <span class="sidebar-btn-sub">38 Districts • UDISE • StackSchools</span>
+              </div>
+            </button>
+
+            <button type="button" id="routePlannerBtn" onclick="window.openModalFromSidebar(window.openRoutePlannerModal)" class="sidebar-menu-btn" style="border: 1.5px solid #f59e0b; background: rgba(245, 158, 11, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">
+                <i class="fas fa-route"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #d97706; font-weight: 700;">Plan Daily Route</span>
+                <span class="sidebar-btn-sub">Distance & Travel Optimization</span>
+              </div>
+            </button>
+
+            <button type="button" id="importCallsBtn" onclick="window.openModalFromSidebar(function(){ var m=document.getElementById('importModalOverlay'); if(m) m.classList.add('active'); })" class="sidebar-menu-btn" style="border: 1.5px solid #8b5cf6; background: rgba(139, 92, 246, 0.06);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #ffffff;">
+                <i class="fas fa-file-import"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #8b5cf6; font-weight: 700;">Import Calls</span>
+                <span class="sidebar-btn-sub">Excel Spreadsheet (.xlsx)</span>
+              </div>
+            </button>
+
+            <button type="button" id="shareReportBtn" onclick="window.openModalFromSidebar(window.openShareModal)" class="sidebar-menu-btn" style="border: 1.5px solid #2563eb; background: rgba(37, 99, 235, 0.07);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);">
+                <i class="fas fa-paper-plane"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #2563eb; font-weight: 700;">Share Daily Report</span>
+                <span class="sidebar-btn-sub">WhatsApp & Daily Visit Slip</span>
+              </div>
+            </button>
+
+            <button type="button" id="exportExcelBtn" onclick="window.openModalFromSidebar(function(){ if(window.exporter && typeof window.exporter.exportToExcel==='function') window.exporter.exportToExcel(); })" class="sidebar-menu-btn" style="border: 1.5px solid #107c41; background: rgba(16, 124, 65, 0.07);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #107c41, #0b5e31); color: #ffffff; box-shadow: 0 2px 8px rgba(16, 124, 65, 0.3);">
+                <i class="fas fa-file-excel"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #107c41; font-weight: 700;">Export Excel (.xlsx)</span>
+                <span class="sidebar-btn-sub">Download Full Call Records</span>
+              </div>
+            </button>
+
+            <div class="sidebar-menu-heading" style="margin-top: 0.75rem;">TOOLS & MANAGEMENT</div>
+
+            <button type="button" onclick="window.openModalFromSidebar(function(){ var m=document.getElementById('addCallModalOverlay'); if(m) m.classList.add('active'); })" class="sidebar-menu-btn" style="border: 1.5px solid #3b82f6; background: rgba(37, 99, 235, 0.05);">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, #1877f2, #166fe5); color: #ffffff;">
+                <i class="fas fa-plus-circle"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title" style="color: #1877f2; font-weight: 700;">+ Log / Add Field Call</span>
+                <span class="sidebar-btn-sub">Create New Support Ticket</span>
+              </div>
+            </button>
+
+            <button type="button" onclick="window.openModalFromSidebar(window.openOnboardingGuide)" class="sidebar-menu-btn">
+              <div class="sidebar-btn-icon" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(29, 78, 216, 0.2)); color: #2563eb;">
+                <i class="fas fa-graduation-cap"></i>
+              </div>
+              <div class="sidebar-btn-text">
+                <span class="sidebar-btn-title">How to Use (Guide)</span>
+                <span class="sidebar-btn-sub">Interactive Step-by-Step Walkthrough</span>
+              </div>
+            </button>
+          `;
+        }
+      };
+
+      // === ENGINEER & ADMIN PROFILE & SETTINGS HANDLERS ===
       function updateUserHeaderUI() {
         var u = window.authStore ? window.authStore.currentUser : null;
         var nameEl = document.getElementById('userNameDisplay');
@@ -3033,15 +3241,40 @@
         var sideNameEl = document.getElementById('sidebarUserName');
         var sideRoleEl = document.getElementById('sidebarUserRole');
         var distBadge = document.getElementById('userDistrictBadge');
+        var avatarEl = document.getElementById('userAvatarBadge');
+        var brandSub = document.querySelector('.brand-subtitle');
+
+        var fieldView = document.getElementById('fieldEngineerMainView');
+        var adminView = document.getElementById('adminMainView');
+
+        var isAdmin = u && (u.role === 'REPORTING_HEAD' || u.username === 'admin' || u.empId === '1001');
 
         if (u) {
-          var nameStr = u.name || 'Field Engineer';
-          var roleStr = (u.role === 'REPORTING_HEAD' ? 'Reporting Head' : 'Field Engineer') + ' (Emp ID: ' + (u.empId || '569') + ')';
+          var nameStr = u.name || (isAdmin ? 'Statewide Admin' : 'Field Engineer');
+          var roleStr = isAdmin ? '👑 Statewide Operations Head' : 'Field Engineer (Emp ID: ' + (u.empId || '569') + ')';
           if (nameEl) nameEl.textContent = nameStr;
           if (roleEl) roleEl.textContent = roleStr;
           if (sideNameEl) sideNameEl.textContent = nameStr;
           if (sideRoleEl) sideRoleEl.textContent = roleStr;
-          if (distBadge) distBadge.textContent = (u.district ? u.district.toUpperCase() : 'NAGAPATTINAM');
+          if (distBadge) {
+            if (isAdmin) {
+              distBadge.textContent = 'STATEWIDE HQ';
+              distBadge.style.background = 'rgba(30,58,138,0.15)';
+              distBadge.style.color = '#1e3a8a';
+              distBadge.style.fontWeight = '800';
+            } else {
+              distBadge.textContent = (u.district ? u.district.toUpperCase() : 'NAGAPATTINAM');
+              distBadge.style.background = '';
+              distBadge.style.color = '';
+            }
+          }
+          if (avatarEl) {
+            avatarEl.innerHTML = isAdmin ? '<i class="fas fa-shield-halved"></i>' : '<i class="fas fa-user-tie"></i>';
+            avatarEl.style.background = isAdmin ? 'linear-gradient(135deg, #1e3a8a, #3b82f6)' : 'linear-gradient(135deg, #1877f2, #0d65d9)';
+          }
+          if (brandSub) {
+            brandSub.textContent = isAdmin ? 'Tamil Nadu School Project • Statewide Operations & Call Tracker' : 'Tamil Nadu School Project - Field Call & Conveyance Tracker';
+          }
         } else {
           if (nameEl) nameEl.textContent = 'Guest Engineer';
           if (roleEl) roleEl.textContent = 'Not Logged In';
@@ -3049,6 +3282,14 @@
           if (sideRoleEl) sideRoleEl.textContent = 'Not Logged In';
           if (distBadge) distBadge.textContent = 'SELECT DISTRICT';
         }
+
+        // Default: Always show the main Calls Dashboard view on login
+        if (fieldView && adminView) {
+          fieldView.style.display = 'block';
+          adminView.style.display = 'none';
+        }
+
+        window.renderAppSidebar();
       }
       window.updateUserHeaderUI = updateUserHeaderUI;
       updateUserHeaderUI();
@@ -3313,14 +3554,21 @@
         window.closeFbResetModal();
         window.updateUserHeaderUI();
 
-        // Check if first-time user and show interactive onboarding guide
-        setTimeout(function() {
-          var u = window.authStore ? window.authStore.currentUser : null;
-          var uTag = u ? (u.empId || u.contactNo || u.id) : 'guest';
-          if (!localStorage.getItem('KSSMART_ONBOARDED_' + uTag)) {
-            window.openOnboardingGuide();
-          }
-        }, 400);
+        var u = window.authStore ? window.authStore.currentUser : null;
+        var isAdmin = u && (u.role === 'REPORTING_HEAD' || u.username === 'admin' || u.empId === '1001');
+
+        if (isAdmin) {
+          // Direct Admin Landing: Land on the Main Calls Dashboard
+          window.showMainCallsDashboard();
+        } else {
+          // Check if first-time user and show interactive onboarding guide
+          setTimeout(function() {
+            var uTag = u ? (u.empId || u.contactNo || u.id) : 'guest';
+            if (!localStorage.getItem('KSSMART_ONBOARDED_' + uTag)) {
+              window.openOnboardingGuide();
+            }
+          }, 400);
+        }
       };
 
       // === FIRST-TIME USER INTERACTIVE ONBOARDING GUIDE CONTROLLER ===

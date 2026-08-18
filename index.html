@@ -791,6 +791,28 @@
 
     <div class="nav-actions" style="display: flex; align-items: center; gap: 0.65rem;">
       
+      <!-- Field Engineer Top Action Pill Cluster (TN Schools & Map, Plan Route, Log Call) -->
+      <div id="topNavbarActionCluster" style="display: flex; align-items: center; gap: 0.35rem; background: var(--bg-card); border: 1.5px solid var(--border-color); padding: 3px 4px; border-radius: 9999px; box-shadow: var(--shadow-xs);">
+        
+        <!-- TN Schools & Map Button -->
+        <button id="topNavGeoBtn" type="button" onclick="if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory();" class="topbar-action-pill" title="TN Schools Geo-Directory & Map (StackSchools)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 0.42rem 0.85rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35); transition: all 0.2s ease;">
+          <i class="fas fa-map-location-dot" style="font-size: 0.9rem;"></i>
+          <span>TN Schools & Map</span>
+        </button>
+
+        <!-- Route Planner Button -->
+        <button id="topNavRouteBtn" type="button" onclick="if(typeof window.openRoutePlannerModal==='function') window.openRoutePlannerModal();" class="topbar-action-pill" title="Plan Daily Route" style="background: rgba(245, 158, 11, 0.08); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.42rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; transition: all 0.2s ease;">
+          <i class="fas fa-route"></i>
+          <span>Route</span>
+        </button>
+
+        <!-- Add Call Button -->
+        <button id="topNavAddCallBtn" type="button" onclick="var m=document.getElementById('addCallModalOverlay'); if(m){ m.classList.add('active'); m.style.display='flex'; }" class="topbar-action-pill" title="Log New Field Call" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35); transition: all 0.2s ease;">
+          <i class="fas fa-plus"></i>
+        </button>
+
+      </div>
+
       <!-- Quick Action Utility Bar (Notification, Theme, Settings) -->
       <div class="topbar-controls-island" style="display: flex; align-items: center; gap: 0.25rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 3px; border-radius: 12px; box-shadow: var(--shadow-xs);">
         
@@ -826,28 +848,6 @@
         <button id="engineerSettingsBtn" type="button" onclick="window._openEngineerSettingsModal()" class="topbar-icon-btn" title="System Settings & Profile" style="width: 34px; height: 34px; border-radius: 9px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;">
           <i class="fas fa-cog"></i>
         </button>
-      </div>
-
-      <!-- Field Engineer Top Action Pill Cluster (TN Schools & Map, Plan Route, Log Call) -->
-      <div id="topNavbarActionCluster" style="display: flex; align-items: center; gap: 0.35rem; background: var(--bg-card); border: 1.5px solid var(--border-color); padding: 3px 4px; border-radius: 9999px; box-shadow: var(--shadow-xs);">
-        
-        <!-- TN Schools & Map Button -->
-        <button id="topNavGeoBtn" type="button" onclick="if(window.openTnSchoolGeoDirectory) window.openTnSchoolGeoDirectory();" class="topbar-action-pill" title="TN Schools Geo-Directory & Map (StackSchools)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 0.42rem 0.85rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35); transition: all 0.2s ease;">
-          <i class="fas fa-map-location-dot" style="font-size: 0.9rem;"></i>
-          <span>TN Schools & Map</span>
-        </button>
-
-        <!-- Route Planner Button -->
-        <button id="topNavRouteBtn" type="button" onclick="if(typeof window.openRoutePlannerModal==='function') window.openRoutePlannerModal();" class="topbar-action-pill" title="Plan Daily Route" style="background: rgba(245, 158, 11, 0.08); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.42rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; transition: all 0.2s ease;">
-          <i class="fas fa-route"></i>
-          <span>Route</span>
-        </button>
-
-        <!-- Add Call Button -->
-        <button id="topNavAddCallBtn" type="button" onclick="var m=document.getElementById('addCallModalOverlay'); if(m){ m.classList.add('active'); m.style.display='flex'; }" class="topbar-action-pill" title="Log New Field Call" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35); transition: all 0.2s ease;">
-          <i class="fas fa-plus"></i>
-        </button>
-
       </div>
 
       <!-- Compact User Profile Pill -->
